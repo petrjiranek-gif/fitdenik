@@ -1,8 +1,8 @@
+import { createBaselineDefaults } from "@/lib/baseline-defaults";
 import {
   benchmarkResults,
   nutritionEntries,
   trainingSessions,
-  userProfile,
 } from "@/lib/mock-data";
 import type { BenchmarkResult, NutritionEntry, TrainingSession } from "@/lib/types";
 import type {
@@ -68,18 +68,7 @@ const benchmarkRepo: BenchmarkRepository = {
 };
 
 function getBaselineDefaults(): BaselineInput {
-  return {
-    age: userProfile.age,
-    heightCm: userProfile.heightCm,
-    baselineWeightKg: userProfile.baselineWeightKg,
-    waistCm: userProfile.waistCm,
-    estimatedBodyFatPct: userProfile.estimatedBodyFatPct,
-    restingHeartRate: userProfile.restingHeartRate,
-    activityLevel: userProfile.activityLevel,
-    goalsText: userProfile.goals.join(", "),
-    limitations: userProfile.limitations,
-    notes: userProfile.notes,
-  };
+  return createBaselineDefaults();
 }
 
 export const localStorageRepositories: AppRepositories = {
@@ -92,7 +81,8 @@ export const localStorageRepositories: AppRepositories = {
       const raw = window.localStorage.getItem(BASELINE_STORAGE_KEY);
       if (!raw) return null;
       try {
-        return JSON.parse(raw) as BaselineInput;
+        const parsed = JSON.parse(raw) as Partial<BaselineInput>;
+        return { ...getBaselineDefaults(), ...parsed };
       } catch {
         return null;
       }

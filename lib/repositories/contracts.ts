@@ -13,6 +13,32 @@ export type BaselineInput = Pick<
   | "notes"
 > & {
   goalsText: string;
+  /** Hlavní cíl — cílová váha (kg). */
+  targetWeightKg: number;
+  /** Volitelné datum cíle (YYYY-MM-DD). */
+  targetDate?: string;
+  /** Datum měření z chytré váhy (YYYY-MM-DD). */
+  scaleMeasuredAt: string;
+  /** Hodnoty z chytré váhy (0 = nevyplněno; váha = baselineWeightKg jako výchozí bod). */
+  scaleBmi: number;
+  scaleBodyFatPct: number;
+  scaleMuscleMassKg: number;
+  scaleBodyWaterPct: number;
+  scaleLeanMassKg: number;
+  scaleBoneMassKg: number;
+  scaleProteinPct: number;
+  scaleVisceralFat: number;
+  scaleBmrKcal: number;
+  scaleMetabolicAge: number;
+  /** Obvody těla (cm) — baseline pro porovnání. */
+  neckCm: number;
+  chestRelaxedCm: number;
+  chestFlexedCm: number;
+  armRelaxedCm: number;
+  armFlexedCm: number;
+  hipsCm: number;
+  thighCm: number;
+  calfCm: number;
 };
 
 export interface BaselineRepository {

@@ -1,9 +1,5 @@
-import {
-  benchmarkResults,
-  nutritionEntries,
-  trainingSessions,
-  userProfile,
-} from "@/lib/mock-data";
+import { createBaselineDefaults } from "@/lib/baseline-defaults";
+import { benchmarkResults, nutritionEntries, trainingSessions } from "@/lib/mock-data";
 import type { BenchmarkResult, NutritionEntry, TrainingSession } from "@/lib/types";
 import type { AppRepositories, BaselineInput } from "@/lib/repositories/contracts";
 
@@ -15,18 +11,7 @@ function notImplemented(action: string): never {
 }
 
 function getBaselineDefaults(): BaselineInput {
-  return {
-    age: userProfile.age,
-    heightCm: userProfile.heightCm,
-    baselineWeightKg: userProfile.baselineWeightKg,
-    waistCm: userProfile.waistCm,
-    estimatedBodyFatPct: userProfile.estimatedBodyFatPct,
-    restingHeartRate: userProfile.restingHeartRate,
-    activityLevel: userProfile.activityLevel,
-    goalsText: userProfile.goals.join(", "),
-    limitations: userProfile.limitations,
-    notes: userProfile.notes,
-  };
+  return createBaselineDefaults();
 }
 
 export const supabaseRepositories: AppRepositories = {

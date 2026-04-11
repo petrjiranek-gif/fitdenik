@@ -46,6 +46,23 @@ const trainingRepo: TrainingRepository = {
     writeStorage(TRAINING_STORAGE_KEY, [next, ...this.list()]);
     return next;
   },
+  update(id, patch) {
+    const list = this.list();
+    const idx = list.findIndex((s) => s.id === id);
+    if (idx === -1) return null;
+    const merged: TrainingSession = { ...list[idx], ...patch };
+    const next = [...list];
+    next[idx] = merged;
+    writeStorage(TRAINING_STORAGE_KEY, next);
+    return merged;
+  },
+  delete(id) {
+    const list = this.list();
+    const next = list.filter((s) => s.id !== id);
+    if (next.length === list.length) return false;
+    writeStorage(TRAINING_STORAGE_KEY, next);
+    return true;
+  },
 };
 
 const nutritionRepo: NutritionRepository = {

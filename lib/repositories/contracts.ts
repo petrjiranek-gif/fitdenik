@@ -56,6 +56,11 @@ export interface BaselineRepository {
 export interface TrainingRepository {
   list(): TrainingSession[];
   create(input: Omit<TrainingSession, "id" | "userId">): TrainingSession;
+  update(
+    id: string,
+    patch: Partial<Omit<TrainingSession, "id" | "userId">>,
+  ): TrainingSession | null;
+  delete(id: string): boolean;
 }
 
 export interface NutritionRepository {

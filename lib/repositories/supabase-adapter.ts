@@ -37,6 +37,12 @@ export const supabaseRepositories: AppRepositories = {
       void input;
       notImplemented("training.create");
     },
+    update() {
+      notImplemented("training.update");
+    },
+    delete() {
+      notImplemented("training.delete");
+    },
   },
   nutrition: {
     list() {

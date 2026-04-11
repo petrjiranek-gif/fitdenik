@@ -90,17 +90,54 @@ function normalizeSportType(workoutType: unknown): TrainingSession["sportType"] 
   return "Walking";
 }
 
+/** Číslo z pole (včetně desetinné čárky); nikdy NaN. */
+function parseLocaleNumber(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const s = String(value ?? "")
+    .trim()
+    .replace(/\s/g, "")
+    .replace(",", ".");
+  if (!s) return 0;
+  const n = parseFloat(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * Délka tréninku v minutách: číslo, nebo „59:57“ / „1:02:30“ (OCR z Apple Fitness apod.).
+ * Number("59:57") je NaN → bez tohoto padá NOT NULL na duration_min.
+ */
+function parseDurationToMinutes(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.max(1, Math.round(value));
+  }
+  const raw = String(value ?? "").trim();
+  if (!raw) return 30;
+  if (raw.includes(":")) {
+    const nums = raw.split(":").map((x) => parseInt(x.trim(), 10));
+    if (nums.some((n) => Number.isNaN(n))) return 30;
+    if (nums.length === 3) {
+      return Math.max(1, Math.round(nums[0] * 60 + nums[1] + nums[2] / 60));
+    }
+    if (nums.length === 2 && nums[1] < 60) {
+      return Math.max(1, Math.round(nums[0] + nums[1] / 60));
+    }
+    return 30;
+  }
+  const n = parseLocaleNumber(raw);
+  return n > 0 ? Math.max(1, Math.round(n)) : 30;
+}
+
 function buildTrainingFieldsFromParsed(parsedData: ParsedData): Omit<TrainingSession, "id" | "userId"> {
   const titleLabel = String(parsedData.workoutType ?? "").trim() || "Import";
   return {
     date: String(parsedData.date ?? new Date().toISOString().slice(0, 10)),
     sportType: normalizeSportType(parsedData.workoutType),
     title: `${titleLabel} (import)`,
-    durationMin: Number(parsedData.durationMin ?? 30),
-    distanceKm: Number(parsedData.distanceKm ?? 0),
-    avgHeartRate: Number(parsedData.averageHeartRate ?? 0),
-    calories: Number(parsedData.calories ?? 0),
-    elevation: Number(parsedData.elevation ?? 0),
+    durationMin: parseDurationToMinutes(parsedData.durationMin),
+    distanceKm: Math.max(0, Math.round(parseLocaleNumber(parsedData.distanceKm) * 100) / 100),
+    avgHeartRate: Math.max(0, Math.round(parseLocaleNumber(parsedData.averageHeartRate))),
+    calories: Math.max(0, Math.round(parseLocaleNumber(parsedData.calories))),
+    elevation: Math.max(0, Math.round(parseLocaleNumber(parsedData.elevation))),
     pace: String(parsedData.pace ?? "-"),
     effort: String(parsedData.effort || "střední"),
     rpe: 6,
@@ -122,6 +159,7 @@ export function ImportsCenter() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [deletingImportId, setDeletingImportId] = useState<string | null>(null);
+  const [writingTrainingFromImportId, setWritingTrainingFromImportId] = useState<string | null>(null);
   const previewUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -347,6 +385,22 @@ export function ImportsCenter() {
     setMessage("Výživa vytvořena z importu.");
   };
 
+  /** Jedním klikem z uloženého importu (starší záznamy bez auto-zápisu do deníku). */
+  const onWriteTrainingFromSavedImport = async (item: ImportRecord) => {
+    if (item.import_target !== "training") return;
+    setErrorMessage(null);
+    setMessage(null);
+    setWritingTrainingFromImportId(item.id);
+    const data = item.parsed_json as ParsedData;
+    const t = await persistTrainingFromParsed(data);
+    setWritingTrainingFromImportId(null);
+    if (!t.ok) {
+      setErrorMessage(t.error);
+      return;
+    }
+    setMessage(`Trénink zapsán do deníku (podle importu „${item.image_name}“).`);
+  };
+
   const onDeleteImport = async (id: string) => {
     if (!confirm("Opravdu chceš tento import smazat?")) return;
     setDeletingImportId(id);
@@ -490,22 +544,38 @@ export function ImportsCenter() {
 
       <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
         <h3 className="mb-2 text-base font-semibold">Poslední importy</h3>
+        <p className="mb-3 text-xs text-zinc-500">
+          U importů <span className="text-zinc-400">trénink</span> můžeš jedním klikem doplnit záznam do záložky Trénink — použijí se uložená pole z daného importu (vhodné pro starší importy před automatickým zápisem).
+        </p>
         <div className="space-y-2 text-sm">
-          {savedImports.slice(0, 8).map((item) => (
+          {savedImports.slice(0, 30).map((item) => (
             <div
               key={item.id}
-              className="flex items-center justify-between rounded-lg bg-zinc-50 p-2 text-zinc-900"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-zinc-50 p-2 text-zinc-900"
             >
-              <span className="min-w-0 break-words">
+              <span className="min-w-0 flex-1 break-words">
                 {item.created_at?.slice(0, 10)} - {item.source_app} - {item.import_target} - {item.image_name}
               </span>
-              <button
-                onClick={() => void onDeleteImport(item.id)}
-                className="rounded border border-rose-300 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50"
-                disabled={deletingImportId === item.id}
-              >
-                {deletingImportId === item.id ? "Mažu..." : "Smazat"}
-              </button>
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                {item.import_target === "training" && (
+                  <button
+                    type="button"
+                    onClick={() => void onWriteTrainingFromSavedImport(item)}
+                    disabled={writingTrainingFromImportId === item.id}
+                    className="rounded border border-ew-border bg-ew-bg px-2 py-1 text-xs text-ew-blue-light hover:border-ew-blue-light disabled:opacity-50"
+                  >
+                    {writingTrainingFromImportId === item.id ? "Zapisuji…" : "Zapsat do deníku"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => void onDeleteImport(item.id)}
+                  className="rounded border border-rose-300 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50"
+                  disabled={deletingImportId === item.id}
+                >
+                  {deletingImportId === item.id ? "Mažu..." : "Smazat"}
+                </button>
+              </div>
             </div>
           ))}
         </div>

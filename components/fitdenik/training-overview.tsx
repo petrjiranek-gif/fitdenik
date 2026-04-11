@@ -247,8 +247,8 @@ export function TrainingOverview() {
       <section className="overflow-hidden rounded-xl border border-ew-border bg-ew-panel">
         <h3 className="border-b border-ew-border bg-ew-bg px-4 py-3 text-base font-semibold text-zinc-100">Všechny tréninky</h3>
         <div className="max-h-[min(28rem,70vh)] overflow-auto">
-          <table className="w-full text-sm">
-            <thead className="sticky top-0 bg-ew-bg text-left text-xs text-ew-muted">
+          <table className="w-full border-collapse bg-ew-bg text-sm">
+            <thead className="sticky top-0 z-[1] bg-ew-bg text-left text-xs text-ew-muted">
               <tr>
                 <th className="px-3 py-2 font-medium">Datum</th>
                 <th className="px-3 py-2 font-medium">Název</th>
@@ -260,7 +260,7 @@ export function TrainingOverview() {
                 <th className="px-3 py-2 font-medium" />
               </tr>
             </thead>
-            <tbody>
+            <tbody className="bg-ew-bg">
               {sorted.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-3 py-8 text-center text-ew-muted">
@@ -269,7 +269,7 @@ export function TrainingOverview() {
                 </tr>
               ) : (
                 sorted.map((s) => (
-                  <tr key={s.id} className="border-t border-ew-border text-zinc-300">
+                  <tr key={s.id} className="border-t border-ew-border bg-ew-bg text-zinc-300">
                     <td className="whitespace-nowrap px-3 py-2">{s.date}</td>
                     <td className="max-w-[10rem] truncate px-3 py-2">{s.title}</td>
                     <td className="px-3 py-2">{s.sportType}</td>

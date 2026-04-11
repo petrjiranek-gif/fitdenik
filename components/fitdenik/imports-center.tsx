@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { createWorker, PSM } from "tesseract.js";
 import { preprocessImageForOcr } from "@/lib/ocr-preprocess";
+import { getRepositories } from "@/lib/repositories/provider";
 import type { NutritionEntry, TrainingSession } from "@/lib/types";
 
 type ImportTarget = "training" | "nutrition";
@@ -81,7 +82,36 @@ const NUTRITION_LABELS_CS: Record<string, string> = {
   notes: "Poznámka",
 };
 
+function normalizeSportType(workoutType: unknown): TrainingSession["sportType"] {
+  const s = String(workoutType ?? "").trim();
+  if (WORKOUT_TYPE_OPTIONS.includes(s as TrainingSession["sportType"])) {
+    return s as TrainingSession["sportType"];
+  }
+  return "Walking";
+}
+
+function buildTrainingFieldsFromParsed(parsedData: ParsedData): Omit<TrainingSession, "id" | "userId"> {
+  const titleLabel = String(parsedData.workoutType ?? "").trim() || "Import";
+  return {
+    date: String(parsedData.date ?? new Date().toISOString().slice(0, 10)),
+    sportType: normalizeSportType(parsedData.workoutType),
+    title: `${titleLabel} (import)`,
+    durationMin: Number(parsedData.durationMin ?? 30),
+    distanceKm: Number(parsedData.distanceKm ?? 0),
+    avgHeartRate: Number(parsedData.averageHeartRate ?? 0),
+    calories: Number(parsedData.calories ?? 0),
+    elevation: Number(parsedData.elevation ?? 0),
+    pace: String(parsedData.pace ?? "-"),
+    effort: String(parsedData.effort || "střední"),
+    rpe: 6,
+    notes: String(parsedData.notes ?? "Vytvořeno z importu screenshotu"),
+  };
+}
+
 export function ImportsCenter() {
+  const repositories = useMemo(() => getRepositories(), []);
+  const useSupabase = process.env.NEXT_PUBLIC_FITDENIK_REPOSITORY === "supabase";
+
   const [sourceApp, setSourceApp] = useState("apple-fitness");
   const [importTarget, setImportTarget] = useState<ImportTarget>("training");
   const [imageName, setImageName] = useState("");
@@ -211,6 +241,27 @@ export function ImportsCenter() {
     }));
   };
 
+  const persistTrainingFromParsed = useCallback(
+    async (data: ParsedData): Promise<{ ok: true } | { ok: false; error: string }> => {
+      const fields = buildTrainingFieldsFromParsed(data);
+      if (useSupabase) {
+        const response = await fetch("/api/training", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: "u1", ...fields }),
+        });
+        if (!response.ok) {
+          const result = (await response.json()) as { error?: string };
+          return { ok: false, error: result.error ?? "Nepodařilo se zapsat trénink." };
+        }
+        return { ok: true };
+      }
+      repositories.training.create(fields);
+      return { ok: true };
+    },
+    [repositories, useSupabase],
+  );
+
   const onSaveImport = async () => {
     setErrorMessage(null);
     setMessage(null);
@@ -233,6 +284,20 @@ export function ImportsCenter() {
     }
     const result = (await response.json()) as { importRecord: ImportRecord };
     setSavedImports((prev) => [result.importRecord, ...prev]);
+
+    if (importTarget === "training") {
+      const t = await persistTrainingFromParsed(parsedData);
+      if (!t.ok) {
+        setMessage("Import uložen.");
+        setErrorMessage(
+          `Trénink se nepodařilo zapsat do deníku: ${t.error} (zkus znovu tlačítkem „Vytvořit trénink z importu“).`,
+        );
+        return;
+      }
+      setMessage("Import uložen a trénink je zapsaný v záložce Trénink.");
+      return;
+    }
+
     setMessage("Import uložen.");
   };
 
@@ -240,29 +305,9 @@ export function ImportsCenter() {
     setErrorMessage(null);
     setMessage(null);
     if (importTarget === "training") {
-      const payload: Omit<TrainingSession, "id"> = {
-        userId: "u1",
-        date: String(parsedData.date ?? new Date().toISOString().slice(0, 10)),
-        sportType: (String(parsedData.workoutType ?? "Walking") as TrainingSession["sportType"]),
-        title: `${String(parsedData.workoutType ?? "Import")} (import)`,
-        durationMin: Number(parsedData.durationMin ?? 30),
-        distanceKm: Number(parsedData.distanceKm ?? 0),
-        avgHeartRate: Number(parsedData.averageHeartRate ?? 0),
-        calories: Number(parsedData.calories ?? 0),
-        elevation: Number(parsedData.elevation ?? 0),
-        pace: String(parsedData.pace ?? "-"),
-        effort: String(parsedData.effort ?? "střední"),
-        rpe: 6,
-        notes: String(parsedData.notes ?? "Vytvořeno z importu screenshotu"),
-      };
-      const response = await fetch("/api/training", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      if (!response.ok) {
-        const result = (await response.json()) as { error?: string };
-        setErrorMessage(result.error ?? "Nepodařilo se vytvořit trénink z importu.");
+      const t = await persistTrainingFromParsed(parsedData);
+      if (!t.ok) {
+        setErrorMessage(t.error);
         return;
       }
       setMessage("Trénink vytvořen z importu.");
@@ -376,6 +421,12 @@ export function ImportsCenter() {
 
       <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
         <h3 className="mb-2 text-base font-semibold">Parser-ready hodnoty (ruční editace)</h3>
+        {importTarget === "training" && (
+          <p className="mb-3 text-xs text-zinc-500">
+            Po uložení importu se stejný záznam automaticky zapíše i do záložky Trénink. Tlačítkem „Vytvořit trénink z
+            importu“ můžeš zapsat další řádek z aktuálních hodnot bez nového ukládání importu.
+          </p>
+        )}
         {importTarget === "nutrition" && sourceApp === "calorie-table" && (
           <p className="mb-3 text-xs text-zinc-500">
             Lokální OCR (Tesseract) nevidí obraz jako chatové AI — jen hledá text v pixelech. Před zpracováním zvětšíme snímek a

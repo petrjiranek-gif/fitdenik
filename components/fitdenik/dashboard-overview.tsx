@@ -6,6 +6,7 @@ import {
   getRepositories,
 } from "@/lib/repositories/provider";
 import type { DashboardSummaryResponse } from "@/app/api/dashboard-summary/route";
+import type { BodyMeasurementEntry, NutritionEntry } from "@/lib/types";
 import { WeightSparkline } from "@/components/fitdenik/weight-sparkline";
 
 function todayPrague(): string {
@@ -14,6 +15,49 @@ function todayPrague(): string {
 
 function datePragueFromIso(iso: string): string {
   return new Date(iso).toLocaleDateString("en-CA", { timeZone: "Europe/Prague" });
+}
+
+/** Nejnovější váha z API souhrnu, lokálních měření i výživy (hybrid Supabase + localStorage). */
+function pickNewestBodyWeight(
+  summary: DashboardSummaryResponse,
+  measurements: BodyMeasurementEntry[],
+  nutrition: NutritionEntry[],
+): { kg: number | null; date: string | null } {
+  const mSorted = [...measurements]
+    .filter((m) => m.weightKg > 0)
+    .sort((a, b) => b.measuredAt.localeCompare(a.measuredAt));
+  const mLatest = mSorted[0];
+  const nSorted = [...nutrition]
+    .filter((n) => n.bodyWeightKg > 0)
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
+  const nLatest = nSorted[0];
+
+  type Cand = { t: number; kg: number; dateStr: string };
+  const cands: Cand[] = [];
+  if (summary.latestBodyWeightKg != null && summary.latestWeightDate) {
+    cands.push({
+      t: new Date(`${summary.latestWeightDate}T12:00:00`).getTime(),
+      kg: summary.latestBodyWeightKg,
+      dateStr: summary.latestWeightDate,
+    });
+  }
+  if (mLatest) {
+    cands.push({
+      t: new Date(mLatest.measuredAt).getTime(),
+      kg: mLatest.weightKg,
+      dateStr: datePragueFromIso(mLatest.measuredAt),
+    });
+  }
+  if (nLatest) {
+    cands.push({
+      t: new Date(`${nLatest.date}T12:00:00`).getTime(),
+      kg: nLatest.bodyWeightKg,
+      dateStr: nLatest.date,
+    });
+  }
+  if (cands.length === 0) return { kg: null, date: null };
+  cands.sort((a, b) => b.t - a.t);
+  return { kg: cands[0].kg, date: cands[0].dateStr };
 }
 
 function StatusPill({
@@ -130,6 +174,9 @@ export function DashboardOverviewCards() {
     };
   }, [repositories, useSupabase]);
 
+  const measurementList = useMemo(() => repositories.bodyMeasurements.list(), [repositories]);
+  const nutritionList = useMemo(() => repositories.nutrition.list(), [repositories]);
+
   const summary: DashboardSummaryResponse = useSupabase
     ? remote ?? {
         weeklyTrainingCount: fallbackSummary.weeklyTrainingCount,
@@ -155,9 +202,22 @@ export function DashboardOverviewCards() {
         recentTrainings: localExtra?.recentTrainings ?? [],
       };
 
+  const displaySummary = useMemo(() => {
+    const picked = pickNewestBodyWeight(summary, measurementList, nutritionList);
+    const today = todayPrague();
+    const loggedMeasurementToday = measurementList.some((m) => datePragueFromIso(m.measuredAt) === today);
+    const loggedNutritionWeightToday = nutritionList.some((n) => n.date === today && n.bodyWeightKg > 0);
+    return {
+      ...summary,
+      latestBodyWeightKg: picked.kg,
+      latestWeightDate: picked.date,
+      loggedWeightToday: summary.loggedWeightToday || loggedMeasurementToday || loggedNutritionWeightToday,
+    };
+  }, [summary, measurementList, nutritionList]);
+
   const weightDelta =
-    summary.latestBodyWeightKg != null && baseline.baselineWeightKg > 0
-      ? summary.latestBodyWeightKg - baseline.baselineWeightKg
+    displaySummary.latestBodyWeightKg != null && baseline.baselineWeightKg > 0
+      ? displaySummary.latestBodyWeightKg - baseline.baselineWeightKg
       : null;
 
   const weightDeltaLabel =
@@ -176,10 +236,7 @@ export function DashboardOverviewCards() {
           ? "Na baseline."
           : "Nad baseline.";
 
-  const measurementEntriesForChart = useMemo(() => {
-    if (useSupabase) return [];
-    return localExtra?.measurementEntries ?? [];
-  }, [useSupabase, localExtra]);
+  const measurementEntriesForChart = measurementList;
 
   return (
     <div className="space-y-6">
@@ -194,7 +251,7 @@ export function DashboardOverviewCards() {
         <div className="grid gap-2 sm:grid-cols-3">
           <StatusPill ok={summary.loggedTrainingToday} label="Trénink zapsán" />
           <StatusPill ok={summary.loggedNutritionToday} label="Jídelníček / výživa" />
-          <StatusPill ok={summary.loggedWeightToday} label="Váha zapsána (měření / výživa)" />
+          <StatusPill ok={displaySummary.loggedWeightToday} label="Váha zapsána (měření / výživa)" />
         </div>
       </section>
 
@@ -203,7 +260,7 @@ export function DashboardOverviewCards() {
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <Card
             label="Váha vs. baseline"
-            value={summary.latestBodyWeightKg != null ? `${summary.latestBodyWeightKg} kg` : "—"}
+            value={displaySummary.latestBodyWeightKg != null ? `${displaySummary.latestBodyWeightKg} kg` : "—"}
             sub={weightDeltaLabel}
             hint={weightDeltaHint}
             accent={weightDelta != null && weightDelta < 0 ? "positive" : weightDelta != null && weightDelta > 0 ? "warn" : "neutral"}
@@ -224,17 +281,16 @@ export function DashboardOverviewCards() {
         </div>
       </section>
 
-      {!useSupabase && (
-        <section aria-label="Vývoj váhy">
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ew-muted">Měření těla · váha v čase</h3>
-          <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
-            <WeightSparkline entries={measurementEntriesForChart} />
-            <p className="mt-2 text-xs text-ew-muted">
-              Data z lokálních záznamů „Nové měření“. Po nasazení Supabase půjde historie synchronizovat i na server.
-            </p>
-          </div>
-        </section>
-      )}
+      <section aria-label="Vývoj váhy">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ew-muted">Měření těla · váha v čase</h3>
+        <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
+          <WeightSparkline entries={measurementEntriesForChart} />
+          <p className="mt-2 text-xs text-ew-muted">
+            Graf z lokálních záznamů „Nové měření“ (prohlížeč). Karta „Váha vs. baseline“ výše bere nejnovější hodnotu z měření,
+            výživy nebo serveru — podle data a času.
+          </p>
+        </div>
+      </section>
 
       <section aria-label="Poslední tréninky">
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ew-muted">Poslední tréninky</h3>

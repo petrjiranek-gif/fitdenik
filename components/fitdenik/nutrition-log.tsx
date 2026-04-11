@@ -84,7 +84,7 @@ export function NutritionLog() {
 
   return (
     <div className="space-y-4">
-      <form onSubmit={onSubmit} className="grid gap-3 rounded-xl border border-zinc-200 bg-white p-4 md:grid-cols-3">
+      <form onSubmit={onSubmit} className="grid gap-3 rounded-xl border border-ew-border bg-ew-panel p-4 md:grid-cols-3">
         <div className="md:col-span-3">
           <h3 className="text-base font-semibold">Přidat denní výživu</h3>
           <p className="text-xs text-zinc-500">
@@ -159,7 +159,7 @@ export function NutritionLog() {
         </div>
       )}
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
         <h3 className="mb-3 font-semibold">Poslední dny</h3>
         <div className="space-y-2 text-sm">
           {entries.slice(0, 8).map((e) => (

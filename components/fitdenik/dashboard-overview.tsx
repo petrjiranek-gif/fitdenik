@@ -21,12 +21,14 @@ function StatusPill({
   return (
     <div
       className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${
-        ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-zinc-200 bg-white text-zinc-600"
+        ok
+          ? "border-ew-accent/40 bg-ew-accent/10 text-ew-accent"
+          : "border-ew-border bg-ew-panel text-ew-muted"
       }`}
     >
       <span
         className={`flex h-7 w-7 items-center justify-center rounded-full text-base font-bold ${
-          ok ? "bg-emerald-500 text-white" : "bg-zinc-200 text-zinc-500"
+          ok ? "bg-ew-accent text-ew-bg" : "bg-ew-border text-zinc-500"
         }`}
         aria-hidden
       >
@@ -143,13 +145,13 @@ export function DashboardOverviewCards() {
   return (
     <div className="space-y-6">
       {summaryError && (
-        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+        <div className="rounded-lg border border-rose-500/40 bg-rose-950/40 p-3 text-sm text-rose-200">
           {summaryError}
         </div>
       )}
 
       <section aria-label="Stav dne">
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Dnes · přehled plnění</h3>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ew-muted">Dnes · přehled plnění</h3>
         <div className="grid gap-2 sm:grid-cols-3">
           <StatusPill ok={summary.loggedTrainingToday} label="Trénink zapsán" />
           <StatusPill ok={summary.loggedNutritionToday} label="Jídelníček / výživa" />
@@ -158,7 +160,7 @@ export function DashboardOverviewCards() {
       </section>
 
       <section aria-label="Klíčové metriky">
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">7 dní · souhrn</h3>
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ew-muted">7 dní · souhrn</h3>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <Card
             label="Váha vs. baseline"
@@ -184,10 +186,10 @@ export function DashboardOverviewCards() {
       </section>
 
       <section aria-label="Poslední tréninky">
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Poslední tréninky</h3>
-        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ew-muted">Poslední tréninky</h3>
+        <div className="overflow-hidden rounded-xl border border-ew-border bg-ew-panel">
           <table className="w-full text-sm">
-            <thead className="bg-zinc-50 text-left text-xs text-zinc-500">
+            <thead className="bg-ew-bg text-left text-xs text-ew-muted">
               <tr>
                 <th className="px-3 py-2 font-medium">Datum</th>
                 <th className="px-3 py-2 font-medium">Název</th>
@@ -198,13 +200,13 @@ export function DashboardOverviewCards() {
             <tbody>
               {summary.recentTrainings.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-zinc-500">
+                  <td colSpan={4} className="px-3 py-6 text-center text-ew-muted">
                     Zatím žádné tréninky v databázi.
                   </td>
                 </tr>
               ) : (
                 summary.recentTrainings.map((row, i) => (
-                  <tr key={`${row.date}-${row.title}-${i}`} className="border-t border-zinc-100">
+                  <tr key={`${row.date}-${row.title}-${i}`} className="border-t border-ew-border text-zinc-300">
                     <td className="px-3 py-2 whitespace-nowrap">{row.date}</td>
                     <td className="px-3 py-2">{row.title}</td>
                     <td className="px-3 py-2">{row.sport_type}</td>
@@ -234,13 +236,17 @@ function Card({
   accent?: "positive" | "warn" | "neutral";
 }) {
   const subColor =
-    accent === "positive" ? "text-emerald-700" : accent === "warn" ? "text-amber-700" : "text-zinc-600";
+    accent === "positive"
+      ? "text-ew-accent"
+      : accent === "warn"
+        ? "text-amber-400"
+        : "text-ew-muted";
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
-      <p className="text-xs text-zinc-500">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-zinc-900">{value}</p>
+    <div className="rounded-xl border border-ew-border bg-ew-panel p-4 shadow-sm">
+      <p className="text-xs text-ew-muted">{label}</p>
+      <p className="mt-1 text-lg font-semibold text-white">{value}</p>
       {sub != null && sub !== "—" && <p className={`mt-0.5 text-sm font-medium ${subColor}`}>{sub}</p>}
-      {hint && <p className="mt-1 text-xs text-zinc-500">{hint}</p>}
+      {hint && <p className="mt-1 text-xs text-ew-muted">{hint}</p>}
     </div>
   );
 }

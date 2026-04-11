@@ -324,7 +324,7 @@ export function ImportsCenter() {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
         <h3 className="text-base font-semibold">Import screenshotu</h3>
         <p className="text-xs text-zinc-500">
           Vhodné pro dnešní 2 fitness screenshoty i 1 screenshot kalorické tabulky. Screenshot z schránky vlož
@@ -368,13 +368,13 @@ export function ImportsCenter() {
               width={480}
               height={320}
               unoptimized
-              className="max-h-48 w-auto rounded-lg border border-zinc-200"
+              className="max-h-48 w-auto rounded-lg border border-ew-border"
             />
           </div>
         )}
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
         <h3 className="mb-2 text-base font-semibold">Parser-ready hodnoty (ruční editace)</h3>
         {importTarget === "nutrition" && sourceApp === "calorie-table" && (
           <p className="mb-3 text-xs text-zinc-500">
@@ -437,7 +437,7 @@ export function ImportsCenter() {
         {errorMessage && <p className="mt-2 text-sm text-rose-700">{errorMessage}</p>}
       </div>
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
         <h3 className="mb-2 text-base font-semibold">Poslední importy</h3>
         <div className="space-y-2 text-sm">
           {savedImports.slice(0, 8).map((item) => (

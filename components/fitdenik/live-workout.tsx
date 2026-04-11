@@ -38,7 +38,7 @@ export function RepCounterPad() {
 
 export function SetChecklist() {
   return (
-    <div className="space-y-2 rounded-xl border border-zinc-200 bg-white p-4">
+    <div className="space-y-2 rounded-xl border border-ew-border bg-ew-panel p-4">
       {[1, 2, 3, 4].map((set) => (
         <label key={set} className="flex items-center gap-2 text-sm">
           <input type="checkbox" className="h-4 w-4" /> Série {set} dokončena
@@ -50,7 +50,7 @@ export function SetChecklist() {
 
 export function SplitHistoryList() {
   return (
-    <ul className="space-y-2 rounded-xl border border-zinc-200 bg-white p-4 text-sm">
+    <ul className="space-y-2 rounded-xl border border-ew-border bg-ew-panel p-4 text-sm">
       <li>50 reps - 03:58</li>
       <li>100 reps - 08:43</li>
       <li>150 reps - 14:03</li>
@@ -60,7 +60,7 @@ export function SplitHistoryList() {
 
 export function ExerciseStepTracker() {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4">
+    <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
       <h3 className="mb-3 text-sm font-semibold">Angie - kroky</h3>
       {["Pull-ups", "Push-ups", "Sit-ups", "Squats"].map((step) => (
         <div key={step} className="mb-2 flex items-center justify-between rounded-lg bg-zinc-50 p-2 text-sm">
@@ -102,7 +102,7 @@ export function LiveCounterDemo() {
 
 export function ScreenshotUploadCard() {
   return (
-    <div className="rounded-xl border-2 border-dashed border-zinc-300 bg-white p-6">
+    <div className="rounded-xl border-2 border-dashed border-ew-border bg-ew-bg p-6">
       <p className="font-medium">Nahraj screenshot z Apple Fitness / Kondice</p>
       <p className="text-sm text-zinc-500">OCR zatím není aktivní. Zobrazí se parser-ready mock data k ruční úpravě.</p>
       <button className="mt-4 rounded-md bg-zinc-900 px-3 py-2 text-sm text-white">Vybrat soubor</button>

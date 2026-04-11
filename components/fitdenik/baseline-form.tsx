@@ -33,7 +33,7 @@ export function BaselineForm() {
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-zinc-200 bg-white p-4">
+    <form onSubmit={onSubmit} className="space-y-4 rounded-xl border border-ew-border bg-ew-panel p-4">
       <h3 className="text-lg font-semibold">Baseline vstup</h3>
       <div className="grid gap-3 md:grid-cols-2">
         <Input label="Věk" type="number" value={form.age} onChange={(v) => onNumberChange("age", v)} />

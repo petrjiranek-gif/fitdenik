@@ -2,7 +2,7 @@ import { Header, Sidebar } from "@/components/fitdenik/ui";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-zinc-50">
+    <div className="min-h-screen bg-ew-bg">
       <div className="flex min-h-screen flex-col md:flex-row">
         <Sidebar />
         <div className="flex-1">

@@ -84,7 +84,7 @@ export function BenchmarkLog() {
 
   return (
     <div className="space-y-4">
-      <form onSubmit={onSubmit} className="grid gap-3 rounded-xl border border-zinc-200 bg-white p-4 md:grid-cols-4">
+      <form onSubmit={onSubmit} className="grid gap-3 rounded-xl border border-ew-border bg-ew-panel p-4 md:grid-cols-4">
         <div className="md:col-span-4">
           <h3 className="text-base font-semibold">Přidat benchmark výsledek</h3>
           <p className="text-xs text-zinc-500">
@@ -140,7 +140,7 @@ export function BenchmarkLog() {
         </div>
       )}
 
-      <div className="rounded-xl border border-zinc-200 bg-white p-4">
+      <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
         <h3 className="mb-3 font-semibold">Historie benchmarků</h3>
         <div className="space-y-2 text-sm">
           {results.slice(0, 8).map((r) => (

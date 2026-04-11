@@ -30,7 +30,7 @@ export function SourceFilterTabs() {
 
 export function VideoEmbedCard({ title, url, source }: { title: string; url: string; source: string }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4">
+    <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
       <div className="mb-2 flex items-center justify-between">
         <h3 className="font-medium">{title}</h3>
         <SourceBadge source={source} />

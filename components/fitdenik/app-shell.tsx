@@ -20,11 +20,15 @@ export function Sidebar() {
   ] as const;
 
   return (
-    <aside className="w-full border-b border-zinc-200 bg-white md:w-64 md:border-b-0 md:border-r">
-      <div className="px-4 py-4 text-xl font-semibold">FitDenik</div>
+    <aside className="w-full border-b border-ew-border bg-ew-panel md:w-64 md:border-b-0 md:border-r md:border-ew-border">
+      <div className="px-4 py-4 text-xl font-semibold text-white">FitDenik</div>
       <nav className="grid gap-1 p-2">
         {links.map(([label, href]) => (
-          <Link key={href} href={href} className="rounded-lg px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100">
+          <Link
+            key={href}
+            href={href}
+            className="rounded-lg px-3 py-2 text-sm text-zinc-300 hover:bg-ew-border hover:text-white"
+          >
             {label}
           </Link>
         ))}

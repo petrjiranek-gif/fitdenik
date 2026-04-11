@@ -1,18 +1,42 @@
 @import "tailwindcss";
 
+/*
+  eWattUp Command Center — Brand Guidelines v1.0 (zdroj: public/eWattUp_Brand_Manual.docx)
+  Doporučená akcentová zelená: #00E676 (Material Neon).
+*/
 :root {
-  --background: #f8fafc;
-  --foreground: #18181b;
+  --ew-white: #ffffff;
+  --ew-blue: #0066ff;
+  --ew-blue-dark: #1e40af;
+  --ew-blue-light: #60a5fa;
+  --ew-bg: #0a0e1a;
+  --ew-panel: #111827;
+  --ew-border: #1f2937;
+  --ew-muted: #6b7280;
+  --ew-neon: #00ff41;
+  --ew-accent: #00e676;
+  --background: var(--ew-bg);
+  --foreground: #e4e4e7;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
+  --color-ew-white: var(--ew-white);
+  --color-ew-blue: var(--ew-blue);
+  --color-ew-blue-dark: var(--ew-blue-dark);
+  --color-ew-blue-light: var(--ew-blue-light);
+  --color-ew-bg: var(--ew-bg);
+  --color-ew-panel: var(--ew-panel);
+  --color-ew-border: var(--ew-border);
+  --color-ew-muted: var(--ew-muted);
+  --color-ew-neon: var(--ew-neon);
+  --color-ew-accent: var(--ew-accent);
 }
 
 body {
-  background: var(--background);
+  background: var(--ew-bg);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }

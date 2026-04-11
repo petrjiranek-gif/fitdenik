@@ -126,35 +126,64 @@ export async function PATCH(request: Request) {
   if (rest.date !== undefined) row.date = rest.date;
   if (rest.sportType !== undefined) row.sport_type = rest.sportType;
   if (rest.title !== undefined) row.title = rest.title;
-  if (rest.durationMin !== undefined) row.duration_min = rest.durationMin;
-  if (rest.distanceKm !== undefined) row.distance_km = rest.distanceKm;
-  if (rest.avgHeartRate !== undefined) row.avg_heart_rate = rest.avgHeartRate;
-  if (rest.calories !== undefined) row.calories = rest.calories;
-  if (rest.elevation !== undefined) row.elevation = rest.elevation;
+  if (rest.durationMin !== undefined) row.duration_min = Math.round(Number(rest.durationMin)) || 0;
+  if (rest.distanceKm !== undefined) row.distance_km = Number(rest.distanceKm);
+  if (rest.avgHeartRate !== undefined) row.avg_heart_rate = Math.round(Number(rest.avgHeartRate)) || 0;
+  if (rest.calories !== undefined) row.calories = Math.round(Number(rest.calories)) || 0;
+  if (rest.elevation !== undefined) row.elevation = Math.round(Number(rest.elevation)) || 0;
   if (rest.pace !== undefined) row.pace = rest.pace;
   if (rest.effort !== undefined) row.effort = rest.effort;
-  if (rest.rpe !== undefined) row.rpe = rest.rpe;
+  if (rest.rpe !== undefined) row.rpe = Math.round(Number(rest.rpe)) || 0;
   if (rest.notes !== undefined) row.notes = rest.notes;
 
   if (Object.keys(row).length === 0) {
     return NextResponse.json({ error: "Žádná pole k úpravě." }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  // Bez .single(): při RLS nebo prázdném RETURNING PostgREST občas vrátí 0 řádků a .single() hodí
+  // „Cannot coerce the result to a single JSON object“.
+  const { data: updatedRows, error: updateError } = await supabase
     .from("training_sessions")
     .update(row)
     .eq("id", id)
-    .select("*")
-    .single();
+    .select("*");
 
-  if (error) {
+  if (updateError) {
     return NextResponse.json(
-      { error: `Chyba při úpravě tréninku: ${error.message}` },
+      { error: `Chyba při úpravě tréninku: ${updateError.message}` },
       { status: 500 },
     );
   }
 
-  return NextResponse.json({ session: toSession(data as TrainingRow) });
+  let dataRow = updatedRows?.[0] as TrainingRow | undefined;
+  if (!dataRow) {
+    const { data: fetched, error: fetchError } = await supabase
+      .from("training_sessions")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+
+    if (fetchError) {
+      return NextResponse.json(
+        {
+          error: `Chyba při načtení upraveného tréninku: ${fetchError.message}`,
+        },
+        { status: 500 },
+      );
+    }
+    if (!fetched) {
+      return NextResponse.json(
+        {
+          error:
+            "Žádný řádek se neaktualizoval nebo ho nelze načíst. Zkontroluj RLS (UPDATE a SELECT) na tabulce training_sessions.",
+        },
+        { status: 404 },
+      );
+    }
+    dataRow = fetched as TrainingRow;
+  }
+
+  return NextResponse.json({ session: toSession(dataRow) });
 }
 
 export async function DELETE(request: Request) {

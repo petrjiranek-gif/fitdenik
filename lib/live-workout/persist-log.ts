@@ -14,6 +14,8 @@ export type LiveWorkoutLogEntry = {
   repsCompleted: number;
   repsTarget: number;
   notes?: string;
+  /** Vlastní váhy / škálování zadané při živém tréninku (CrossFit). */
+  loadUsed?: string;
 };
 
 export function readLiveWorkoutLogs(): LiveWorkoutLogEntry[] {

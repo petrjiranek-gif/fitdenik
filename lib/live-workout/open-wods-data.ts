@@ -36,6 +36,8 @@ function stubOpenWod(yy: OpenYearSuffix, part: 1 | 2 | 3, calendarYear: number):
     ],
     referenceUrl: `https://www.wodwell.com/wod/open-${yy}-${part}/`,
     liveFinishAnytime: true,
+    rxLoadDescription:
+      "Rx váhy, výšky boxu a nářadí dle oficiálního předpisu Open pro tvou kategorii (typicky M/W) — ověř na WodWell a Games.",
   };
 }
 
@@ -60,6 +62,7 @@ const OPEN_WOD_OVERRIDES: Partial<Record<OpenWodKey, LiveWodDefinition>> = {
       { level: "Zdroj", timeRange: "WodWell + pravidla soutěže" },
     ],
     referenceUrl: "https://www.wodwell.com/wod/open-26-1/",
+    rxLoadDescription: "Wall ball 20/14 lb (10/9 ft), box 24/20 in, stejné pro MB step-over",
   },
   open_26_2: {
     key: "open_26_2",
@@ -81,6 +84,7 @@ const OPEN_WOD_OVERRIDES: Partial<Record<OpenWodKey, LiveWodDefinition>> = {
     ],
     referenceUrl: "https://www.wodwell.com/wod/open-26-2/",
     liveFinishAnytime: true,
+    rxLoadDescription: "Jednoručky 50/35 lb — alternating snatch a OHS walking lunge",
   },
   open_26_3: {
     key: "open_26_3",
@@ -101,6 +105,7 @@ const OPEN_WOD_OVERRIDES: Partial<Record<OpenWodKey, LiveWodDefinition>> = {
       { level: "Poznámka", timeRange: "Drž pořadí předpisu" },
     ],
     referenceUrl: "https://www.wodwell.com/wod/open-26-3/",
+    rxLoadDescription: "Clean a thruster 95/65 → 115/75 → 135/85 lb (M/W dle předpisu)",
   },
   open_25_1: {
     key: "open_25_1",
@@ -122,6 +127,7 @@ const OPEN_WOD_OVERRIDES: Partial<Record<OpenWodKey, LiveWodDefinition>> = {
     ],
     referenceUrl: "https://www.wodwell.com/wod/open-25-1/",
     liveFinishAnytime: true,
+    rxLoadDescription: "Jednoručky Rx typicky 50/35 lb (M/W) — ověř přesné váhy na Games",
   },
   open_25_2: {
     key: "open_25_2",
@@ -141,6 +147,7 @@ const OPEN_WOD_OVERRIDES: Partial<Record<OpenWodKey, LiveWodDefinition>> = {
       { level: "Zdroj", timeRange: "WodWell" },
     ],
     referenceUrl: "https://www.wodwell.com/wod/open-25-2/",
+    rxLoadDescription: "Thruster postupně 95 / 115 / 135 lb (M), 65 / 75 / 85 lb (W)",
   },
   open_25_3: {
     key: "open_25_3",
@@ -161,6 +168,7 @@ const OPEN_WOD_OVERRIDES: Partial<Record<OpenWodKey, LiveWodDefinition>> = {
     ],
     referenceUrl: "https://www.wodwell.com/wod/open-25-3/",
     liveFinishAnytime: true,
+    rxLoadDescription: "Váhy na čince dle předpisu 25.3 (mrtvý tah, clean, snatch) — viz WodWell",
   },
   open_24_1: {
     key: "open_24_1",
@@ -179,6 +187,7 @@ const OPEN_WOD_OVERRIDES: Partial<Record<OpenWodKey, LiveWodDefinition>> = {
     ],
     referenceUrl: "https://www.wodwell.com/wod/open-24-1/",
     liveFinishAnytime: true,
+    rxLoadDescription: "Váhy a nářadí dle oficiálního předpisu 24.1 (M/W, divize)",
   },
   open_24_2: {
     key: "open_24_2",
@@ -192,6 +201,7 @@ const OPEN_WOD_OVERRIDES: Partial<Record<OpenWodKey, LiveWodDefinition>> = {
     benchmarks: [{ level: "Zdroj pravdy", timeRange: "WodWell + CrossFit Games" }],
     referenceUrl: "https://www.wodwell.com/wod/open-24-2/",
     liveFinishAnytime: true,
+    rxLoadDescription: "Váhy dle oficiálního předpisu 24.2 — viz WodWell",
   },
   open_24_3: {
     key: "open_24_3",
@@ -211,6 +221,8 @@ const OPEN_WOD_OVERRIDES: Partial<Record<OpenWodKey, LiveWodDefinition>> = {
       { level: "Zdroj", timeRange: "WodWell" },
     ],
     referenceUrl: "https://www.wodwell.com/wod/open-24-3/",
+    rxLoadDescription:
+      "Thruster např. 95/65 a 135/95 lb (M) / 65/95 a 95/65 (W) dle divize — ověř na WodWell",
   },
 };
 

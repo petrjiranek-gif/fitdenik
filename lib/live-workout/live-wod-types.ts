@@ -22,4 +22,6 @@ export type LiveWodDefinition = {
   timeCapMin?: number;
   /** AMRAP, chipper s kcal apod. — dokončit výsledek i bez „plného“ počtu rep v počítadle. */
   liveFinishAnytime?: boolean;
+  /** Rx / typické váhy a nářadí (zobrazí se u CrossFitu nad polem pro vlastní zátěž). */
+  rxLoadDescription?: string;
 };

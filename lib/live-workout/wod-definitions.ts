@@ -73,6 +73,7 @@ export const CROSSFIT_WODS: Record<CrossFitGirlKey, LiveWodDefinition> = {
       { level: "Elite", timeRange: "pod 18 min" },
     ],
     referenceUrl: "https://www.wodwell.com/wod/andi/",
+    rxLoadDescription: "Jedna činka 65/45 lb (M/W) na hang power snatch, push press, sumo DL HP a front squat",
   },
   angie: {
     key: "angie",
@@ -114,6 +115,7 @@ export const CROSSFIT_WODS: Record<CrossFitGirlKey, LiveWodDefinition> = {
       { level: "Elite", timeRange: "pod 5 min" },
     ],
     referenceUrl: "https://www.wodwell.com/wod/karen/",
+    rxLoadDescription: "Wall ball 20/14 lb (M/W), cíl 10/9 ft",
   },
   kalsu: {
     key: "kalsu",
@@ -130,6 +132,7 @@ export const CROSSFIT_WODS: Record<CrossFitGirlKey, LiveWodDefinition> = {
       { level: "Rx", timeRange: "elite časy pod ~15 min (orientačně)" },
     ],
     referenceUrl: "https://www.wodwell.com/wod/kalsu/",
+    rxLoadDescription: "Thruster Rx typicky 135/95 lb (M/W) — přesná váha dle verze Kalsu / boxu (viz WodWell)",
   },
   murph: {
     key: "murph",
@@ -149,6 +152,8 @@ export const CROSSFIT_WODS: Record<CrossFitGirlKey, LiveWodDefinition> = {
       { level: "Elite", timeRange: "pod 35 min (bez vesty / s vestou dle pravidel)" },
     ],
     referenceUrl: "https://www.wodwell.com/wod/murph/",
+    rxLoadDescription:
+      "Střední blok v počítadle bez činky; volitelná vesta 20/14 lb (M/W) na celý Murph dle pravidel",
   },
 };
 

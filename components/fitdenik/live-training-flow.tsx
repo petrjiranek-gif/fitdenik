@@ -14,6 +14,7 @@ import {
   type OpenSeasonYear,
   totalTargetReps,
 } from "@/lib/live-workout/wod-definitions";
+import { formInputClass } from "@/components/fitdenik/form-fields";
 import { saveLiveWorkoutLog } from "@/lib/live-workout/persist-log";
 import type { LiveSportCategory } from "@/lib/types";
 
@@ -57,6 +58,47 @@ function repProgressDetail(wod: LiveWodDefinition, completed: number): string | 
   return null;
 }
 
+function CrossfitLoadBlock({
+  wod,
+  userLoad,
+  onChange,
+  idSuffix,
+}: {
+  wod: LiveWodDefinition;
+  userLoad: string;
+  onChange: (v: string) => void;
+  idSuffix: string;
+}) {
+  return (
+    <div className="mt-3 rounded-lg border border-emerald-500/25 bg-emerald-950/25 px-3 py-3">
+      {wod.rxLoadDescription ? (
+        <p className="text-sm leading-snug text-zinc-200">
+          <span className="font-semibold text-emerald-400/95">Rx / nářadí:</span>{" "}
+          <span className="text-zinc-300">{wod.rxLoadDescription}</span>
+        </p>
+      ) : (
+        <p className="text-xs text-zinc-500">Čistě vlastní váha těla — můžeš zapsat gumy, úpravy shybů apod.</p>
+      )}
+      <label htmlFor={`crossfit-load-${idSuffix}`} className="mt-2 block text-xs font-medium text-zinc-400">
+        S čím jsem cvičil/a
+      </label>
+      <input
+        id={`crossfit-load-${idSuffix}`}
+        type="text"
+        value={userLoad}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={
+          wod.rxLoadDescription
+            ? "např. přesně Rx, nebo 6 kg míč, 75 lb thruster…"
+            : "např. shyby na gumě, kliky na bradlech…"
+        }
+        className={`${formInputClass} mt-1`}
+        autoComplete="off"
+      />
+    </div>
+  );
+}
+
 export function LiveTrainingFlow() {
   const [sport, setSport] = useState<LiveSportCategory>("crossfit");
   /** Benchmark „Girl/Hero“ vs CrossFit Open. */
@@ -71,6 +113,7 @@ export function LiveTrainingFlow() {
   const startedAtRef = useRef<number | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [userLoadInput, setUserLoadInput] = useState("");
 
   const wod = wodKey ? LIVE_WODS[wodKey] : null;
   const target = wod ? totalTargetReps(wod) : 0;
@@ -88,6 +131,10 @@ export function LiveTrainingFlow() {
       setWodKey(null);
     }
   }, [cfKind, openYear, wodKey]);
+
+  useEffect(() => {
+    setUserLoadInput("");
+  }, [wodKey, sport]);
 
   useEffect(() => {
     if (!running) return;
@@ -116,6 +163,7 @@ export function LiveTrainingFlow() {
     setElapsedMs(0);
     setCompletedReps(0);
     setActiveOpen(false);
+    setUserLoadInput("");
   };
 
   const addReps = (n: number) => {
@@ -138,6 +186,7 @@ export function LiveTrainingFlow() {
   const finishAndSave = useCallback(() => {
     if (!wod || !wodKey) return;
     const durationSec = Math.floor(elapsedMs / 1000);
+    const loadTrim = userLoadInput.trim();
     const entry = saveLiveWorkoutLog({
       sportCategory: sport,
       wodKey,
@@ -145,7 +194,11 @@ export function LiveTrainingFlow() {
       durationSec,
       repsCompleted: completedReps,
       repsTarget: target,
-      notes: `Živý trénink — ${wod.name}. Čas ${formatElapsed(elapsedMs)}.`,
+      notes: [
+        `Živý trénink — ${wod.name}. Čas ${formatElapsed(elapsedMs)}.`,
+        loadTrim ? ` Použité váhy / škálování: ${loadTrim}.` : "",
+      ].join(""),
+      loadUsed: loadTrim || undefined,
     });
     setSaveMessage(
       `Uloženo lokálně (${entry.wodName}, ${formatElapsed(elapsedMs)}). Doplň hlavní záznam tréninku v Importech nebo v Trénink.`,
@@ -157,7 +210,7 @@ export function LiveTrainingFlow() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry),
     }).catch(() => undefined);
-  }, [sport, wod, wodKey, elapsedMs, completedReps, target]);
+  }, [sport, userLoadInput, wod, wodKey, elapsedMs, completedReps, target]);
 
   const openActive = () => {
     if (!wodKey || !wod) return;
@@ -403,6 +456,14 @@ export function LiveTrainingFlow() {
               · {wod.prescription}
             </p>
             <p className="mt-3 text-sm text-zinc-300">{wod.description}</p>
+            {sport === "crossfit" && (
+              <CrossfitLoadBlock
+                wod={wod}
+                userLoad={userLoadInput}
+                onChange={setUserLoadInput}
+                idSuffix="rx"
+              />
+            )}
             <div className="mt-4">
               <p className="text-xs font-semibold uppercase text-ew-muted">Orientační časy</p>
               <ul className="mt-2 space-y-1 text-sm text-zinc-300">
@@ -453,6 +514,14 @@ export function LiveTrainingFlow() {
             <h3 id="live-session-title" className="text-lg font-semibold text-white">
               {wod.name} — živý průběh
             </h3>
+            {sport === "crossfit" && (
+              <CrossfitLoadBlock
+                wod={wod}
+                userLoad={userLoadInput}
+                onChange={setUserLoadInput}
+                idSuffix="live"
+              />
+            )}
 
             {(() => {
               const detail = repProgressDetail(wod, completedReps);

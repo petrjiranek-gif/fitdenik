@@ -5,7 +5,10 @@ import { usePathname } from "next/navigation";
 
 export function Header() {
   const pathname = usePathname();
-  const hideQuickActions = pathname === "/dashboard" || pathname === "/progress";
+  const hideQuickActions =
+    pathname === "/dashboard" ||
+    pathname === "/progress" ||
+    pathname?.startsWith("/training");
   const hideImportLink = pathname === "/baseline";
 
   return (

@@ -6,6 +6,10 @@ export default function TrainingPage() {
       <ModulePage
         title="Trénink"
         description="Přehled záznamů, rozložení podle sportu a kalorie za minutu. Nový trénink přidáš v sekci níže nebo na stránce Nový trénink."
+        showCharts={false}
+        showFilters={false}
+        showTable={false}
+        showDrilldown={false}
       />
       <TrainingOverview />
     </div>

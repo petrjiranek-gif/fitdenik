@@ -32,13 +32,8 @@ export const bodyMetrics: BodyMetrics[] = [
   { id: "bm3", userId: "u1", date: "2026-04-07", weightKg: 85.7, bodyFatPct: 18.3, muscleMassKg: 39.8, visceralFat: 8, bmi: 26.1, waterPct: 57.1, boneMassKg: 3.3, bmr: 1838, notes: "Po deload týdnu" },
 ];
 
-export const trainingSessions: TrainingSession[] = [
-  { id: "t1", userId: "u1", date: "2026-04-07", sportType: "CrossFit", title: "Karen", durationMin: 14, distanceKm: 0, avgHeartRate: 168, calories: 312, elevation: 0, pace: "-", effort: "vysoké", rpe: 9, notes: "150 wall balls for time." },
-  { id: "t2", userId: "u1", date: "2026-04-06", sportType: "Cycling", title: "Vytrvalostní jízda", durationMin: 56, distanceKm: 24.3, avgHeartRate: 142, calories: 605, elevation: 290, pace: "2:18/km", effort: "střední", rpe: 6, notes: "Zóna 2." },
-  { id: "t3", userId: "u1", date: "2026-04-05", sportType: "Walking", title: "Rychlá chůze", durationMin: 48, distanceKm: 5.9, avgHeartRate: 121, calories: 265, elevation: 45, pace: "8:08/km", effort: "lehké", rpe: 4, notes: "Regenerace." },
-  { id: "t4", userId: "u1", date: "2026-04-04", sportType: "Scooter", title: "Koloběžka město", durationMin: 37, distanceKm: 8.2, avgHeartRate: 115, calories: 190, elevation: 60, pace: "4:31/km", effort: "lehké", rpe: 3, notes: "Aktivní přesun." },
-  { id: "t5", userId: "u1", date: "2026-04-03", sportType: "Bodybuilding", title: "Push day", durationMin: 64, distanceKm: 0, avgHeartRate: 128, calories: 420, elevation: 0, pace: "-", effort: "střední", rpe: 7, notes: "Prsa, ramena, triceps." },
-];
+/** Výchozí prázdné — uživatelská data jen z localStorage / Supabase. */
+export const trainingSessions: TrainingSession[] = [];
 
 export const benchmarkResults: BenchmarkResult[] = [
   { id: "b1", userId: "u1", date: "2026-03-12", benchmarkName: "Karen", resultType: "čas", resultValue: "15:26", scaling: "9kg wall ball", notes: "Rozpad techniky po 100 reps", sourceType: "wodwell", sourceName: "WODwell", sourceUrl: "https://wodwell.com/wod/karen/" },

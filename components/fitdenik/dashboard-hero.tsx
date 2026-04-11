@@ -1,15 +1,17 @@
-/** Logo v `public/` — název s mezerami musí být v URL zakódovaný. */
+/** Logo v `public/` — URL s mezerami. Pravý průhledný podklad jen u PNG/WebP (JPG průhled neumí). */
 const EWATTUP_LOGO = `/eWattUp%20-%20transparent.jpg`;
 
 export function DashboardHero() {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-gradient-to-br from-white to-zinc-50 px-4 py-5 shadow-sm md:flex-row md:items-center md:justify-between md:gap-6">
-      <div className="flex items-center gap-4">
-        <img
-          src={EWATTUP_LOGO}
-          alt="eWattUp"
-          className="h-12 w-auto max-h-14 max-w-[240px] shrink-0 object-contain object-left md:h-14"
-        />
+      <div className="flex items-center gap-3 md:gap-4">
+        <div className="flex h-[2.25rem] w-[5.5rem] shrink-0 items-center justify-center md:h-[2.5rem] md:w-[6.25rem]">
+          <img
+            src={EWATTUP_LOGO}
+            alt="eWattUp"
+            className="max-h-full max-w-full object-contain object-center"
+          />
+        </div>
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">Přehled</p>
           <h2 className="text-xl font-bold tracking-tight text-zinc-900 md:text-2xl">Fakta · data · čísla</h2>

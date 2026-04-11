@@ -9,7 +9,7 @@ function fmtCm(n: number) {
 
 function fmtKg(n: number) {
   if (n == null || Number.isNaN(n) || n <= 0) return "—";
-  return `${Number(n.toFixed(2))} kg`;
+  return `${Number(n.toFixed(1))} kg`;
 }
 
 /** Jednoduchá přední silueta + popisky podle zadaných obvodů (baseline). */

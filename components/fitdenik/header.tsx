@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 export function Header() {
   const pathname = usePathname();
   const hideQuickActions = pathname === "/dashboard";
+  const hideImportLink = pathname === "/baseline";
 
   return (
     <header className="sticky top-0 z-10 border-b border-ew-border bg-ew-panel/95 px-4 py-3 backdrop-blur">
@@ -19,12 +20,14 @@ export function Header() {
             >
               Nový trénink
             </Link>
-            <Link
-              href="/imports"
-              className="rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-sm text-zinc-200 hover:border-ew-blue-light"
-            >
-              Import screenshotu
-            </Link>
+            {!hideImportLink && (
+              <Link
+                href="/imports"
+                className="rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-sm text-zinc-200 hover:border-ew-blue-light"
+              >
+                Import screenshotu
+              </Link>
+            )}
           </div>
         )}
       </div>

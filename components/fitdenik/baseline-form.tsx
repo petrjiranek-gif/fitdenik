@@ -1,12 +1,33 @@
 "use client";
 
-import { useMemo, useState, type ComponentProps } from "react";
+import { useEffect, useMemo, useState, type ComponentProps } from "react";
 import { getRepositories } from "@/lib/repositories/provider";
 import type { BaselineInput } from "@/lib/repositories/contracts";
 import { BaselineSilhouette } from "@/components/fitdenik/baseline-silhouette";
 
 const inputClass =
   "w-full rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-sm text-zinc-200 placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-ew-blue";
+
+/** Mezistav při psaní desetinné čárky/tečky (type=number to v Safari často rozbije). */
+const PARTIAL_DECIMAL = /^-?\d*([.,]\d*)?$/;
+
+function displayDecimalFromValue(v: number, blankZero: boolean): string {
+  if (blankZero && v === 0) return "";
+  if (v == null || Number.isNaN(v)) return "";
+  return String(v);
+}
+
+function normalizeDecimalInput(raw: string): string {
+  return raw.trim().replace(/\s/g, "").replace(",", ".");
+}
+
+/** null = neúplný vstup (např. jen „.“), prázdný řetězec zvlášť v blur */
+function parseDecimalToNumber(normalized: string): number | null {
+  if (normalized === "") return null;
+  if (normalized === "." || normalized === ",") return null;
+  const n = parseFloat(normalized.replace(",", "."));
+  return Number.isFinite(n) ? n : null;
+}
 
 function bmiFromHeightWeight(weightKg: number, heightCm: number): number | null {
   if (weightKg <= 0 || heightCm <= 0) return null;
@@ -49,18 +70,16 @@ export function BaselineForm() {
               Výchozí bod — váha a chytrá váha
             </h3>
             <p className="mt-2 text-xs text-zinc-500">
-              Hlavní referenční váha je výchozí váha (kg). Údaje opsat jako z displeje váhy — typicky{" "}
-              <strong className="font-medium text-zinc-400">jedna desetinná číslice</strong>. V prohlížeči zadej desetinnou{" "}
-              <strong className="font-medium text-zinc-400">tečku</strong> (např. 128,9 kg → <code className="text-zinc-400">128.9</code>).
+              Hlavní referenční váha je výchozí váha (kg). Údaje jako z displeje váhy — typicky{" "}
+              <strong className="font-medium text-zinc-400">jedna desetinná číslice</strong>. Desetinná{" "}
+              <strong className="font-medium text-zinc-400">čárka i tečka</strong> se berou (např. 128,9 nebo 128.9).
             </p>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <NumField
+              <DecimalField
                 label="Výchozí váha (kg)"
                 value={form.baselineWeightKg}
                 onChange={(n) => setNum("baselineWeightKg", n)}
-                step="0.1"
                 blankZero={false}
-                inputMode="decimal"
               />
               <label className="grid gap-1 text-sm">
                 <span className="text-zinc-400">Datum měření (váha)</span>
@@ -84,13 +103,13 @@ export function BaselineForm() {
               </p>
             )}
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <NumField label="BMI (z váhy)" value={form.scaleBmi} onChange={(n) => setNum("scaleBmi", n)} step="0.1" inputMode="decimal" />
-              <NumField label="Tělesný tuk (%)" value={form.scaleBodyFatPct} onChange={(n) => setNum("scaleBodyFatPct", n)} step="0.1" inputMode="decimal" />
-              <NumField label="Svalová hmota (kg)" value={form.scaleMuscleMassKg} onChange={(n) => setNum("scaleMuscleMassKg", n)} step="0.1" inputMode="decimal" />
-              <NumField label="Tělesná voda (%)" value={form.scaleBodyWaterPct} onChange={(n) => setNum("scaleBodyWaterPct", n)} step="0.1" inputMode="decimal" />
-              <NumField label="Libová hmota (kg)" value={form.scaleLeanMassKg} onChange={(n) => setNum("scaleLeanMassKg", n)} step="0.1" inputMode="decimal" />
-              <NumField label="Kostní hmota (kg)" value={form.scaleBoneMassKg} onChange={(n) => setNum("scaleBoneMassKg", n)} step="0.1" inputMode="decimal" />
-              <NumField label="Bílkoviny (%)" value={form.scaleProteinPct} onChange={(n) => setNum("scaleProteinPct", n)} step="0.1" inputMode="decimal" />
+              <DecimalField label="BMI (z váhy)" value={form.scaleBmi} onChange={(n) => setNum("scaleBmi", n)} />
+              <DecimalField label="Tělesný tuk (%)" value={form.scaleBodyFatPct} onChange={(n) => setNum("scaleBodyFatPct", n)} />
+              <DecimalField label="Svalová hmota (kg)" value={form.scaleMuscleMassKg} onChange={(n) => setNum("scaleMuscleMassKg", n)} />
+              <DecimalField label="Tělesná voda (%)" value={form.scaleBodyWaterPct} onChange={(n) => setNum("scaleBodyWaterPct", n)} />
+              <DecimalField label="Libová hmota (kg)" value={form.scaleLeanMassKg} onChange={(n) => setNum("scaleLeanMassKg", n)} />
+              <DecimalField label="Kostní hmota (kg)" value={form.scaleBoneMassKg} onChange={(n) => setNum("scaleBoneMassKg", n)} />
+              <DecimalField label="Bílkoviny (%)" value={form.scaleProteinPct} onChange={(n) => setNum("scaleProteinPct", n)} />
               <NumField label="Viscerální tuk" value={form.scaleVisceralFat} onChange={(n) => setNum("scaleVisceralFat", n)} step="1" />
               <NumField label="BMR (kcal/den)" value={form.scaleBmrKcal} onChange={(n) => setNum("scaleBmrKcal", n)} step="1" />
               <NumField label="Metabolický věk" value={form.scaleMetabolicAge} onChange={(n) => setNum("scaleMetabolicAge", n)} step="1" />
@@ -101,7 +120,7 @@ export function BaselineForm() {
             <h3 className="border-b border-ew-border pb-2 text-base font-semibold text-zinc-100">Osobní údaje</h3>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <NumField label="Věk" value={form.age} onChange={(n) => setNum("age", n)} step="1" blankZero={false} />
-              <NumField label="Výška (cm)" value={form.heightCm} onChange={(n) => setNum("heightCm", n)} step="0.1" blankZero={false} inputMode="decimal" />
+              <DecimalField label="Výška (cm)" value={form.heightCm} onChange={(n) => setNum("heightCm", n)} blankZero={false} />
             </div>
           </section>
 
@@ -111,22 +130,22 @@ export function BaselineForm() {
               Zapiš stejným postupem při každém měření — hodnoty se zobrazí u siluety vpravo.
             </p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <NumField label="Krk" value={form.neckCm} onChange={(n) => setNum("neckCm", n)} step="0.1" />
-              <NumField label="Hrudník klid" value={form.chestRelaxedCm} onChange={(n) => setNum("chestRelaxedCm", n)} step="0.1" />
-              <NumField label="Hrudník napnutý" value={form.chestFlexedCm} onChange={(n) => setNum("chestFlexedCm", n)} step="0.1" />
-              <NumField label="Paže klid" value={form.armRelaxedCm} onChange={(n) => setNum("armRelaxedCm", n)} step="0.1" />
-              <NumField label="Paže napnutá" value={form.armFlexedCm} onChange={(n) => setNum("armFlexedCm", n)} step="0.1" />
-              <NumField label="Pas" value={form.waistCm} onChange={(n) => setNum("waistCm", n)} step="0.1" />
-              <NumField label="Boky" value={form.hipsCm} onChange={(n) => setNum("hipsCm", n)} step="0.1" />
-              <NumField label="Stehno" value={form.thighCm} onChange={(n) => setNum("thighCm", n)} step="0.1" />
-              <NumField label="Lýtko" value={form.calfCm} onChange={(n) => setNum("calfCm", n)} step="0.1" />
+              <DecimalField label="Krk" value={form.neckCm} onChange={(n) => setNum("neckCm", n)} />
+              <DecimalField label="Hrudník klid" value={form.chestRelaxedCm} onChange={(n) => setNum("chestRelaxedCm", n)} />
+              <DecimalField label="Hrudník napnutý" value={form.chestFlexedCm} onChange={(n) => setNum("chestFlexedCm", n)} />
+              <DecimalField label="Paže klid" value={form.armRelaxedCm} onChange={(n) => setNum("armRelaxedCm", n)} />
+              <DecimalField label="Paže napnutá" value={form.armFlexedCm} onChange={(n) => setNum("armFlexedCm", n)} />
+              <DecimalField label="Pas" value={form.waistCm} onChange={(n) => setNum("waistCm", n)} />
+              <DecimalField label="Boky" value={form.hipsCm} onChange={(n) => setNum("hipsCm", n)} />
+              <DecimalField label="Stehno" value={form.thighCm} onChange={(n) => setNum("thighCm", n)} />
+              <DecimalField label="Lýtko" value={form.calfCm} onChange={(n) => setNum("calfCm", n)} />
             </div>
           </section>
 
           <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
             <h3 className="border-b border-ew-border pb-2 text-base font-semibold text-zinc-100">Cíle</h3>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <NumField label="Cílová váha (kg)" value={form.targetWeightKg} onChange={(n) => setNum("targetWeightKg", n)} step="0.1" inputMode="decimal" />
+              <DecimalField label="Cílová váha (kg)" value={form.targetWeightKg} onChange={(n) => setNum("targetWeightKg", n)} />
               <label className="grid gap-1 text-sm">
                 <span className="text-zinc-400">Cílové datum (volitelné)</span>
                 <input
@@ -152,7 +171,7 @@ export function BaselineForm() {
           <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
             <h3 className="border-b border-ew-border pb-2 text-base font-semibold text-zinc-100">Další</h3>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <NumField label="Odhad tuku (%), ručně" value={form.estimatedBodyFatPct} onChange={(n) => setNum("estimatedBodyFatPct", n)} step="0.1" inputMode="decimal" />
+              <DecimalField label="Odhad tuku (%), ručně" value={form.estimatedBodyFatPct} onChange={(n) => setNum("estimatedBodyFatPct", n)} />
               <NumField label="Klidový tep" value={form.restingHeartRate} onChange={(n) => setNum("restingHeartRate", n)} step="1" />
             </div>
             <label className="mt-3 grid gap-1 text-sm">
@@ -197,6 +216,72 @@ export function BaselineForm() {
   );
 }
 
+/** Desetinná čísla s čárkou nebo tečkou; bez skoku na 0 při psaní separatoru. */
+function DecimalField({
+  label,
+  value,
+  onChange,
+  blankZero = true,
+}: {
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+  blankZero?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(() => displayDecimalFromValue(value, blankZero));
+
+  useEffect(() => {
+    if (!editing) {
+      setText(displayDecimalFromValue(value, blankZero));
+    }
+  }, [value, blankZero, editing]);
+
+  return (
+    <label className="grid gap-1 text-sm">
+      <span className="text-zinc-400">{label}</span>
+      <input
+        type="text"
+        inputMode="decimal"
+        autoComplete="off"
+        value={text}
+        onFocus={() => setEditing(true)}
+        onBlur={() => {
+          setEditing(false);
+          const normalized = normalizeDecimalInput(text);
+          if (normalized === "") {
+            onChange(0);
+            setText(displayDecimalFromValue(0, blankZero));
+            return;
+          }
+          const parsed = parseDecimalToNumber(normalized);
+          if (parsed === null) {
+            setText(displayDecimalFromValue(value, blankZero));
+            return;
+          }
+          const rounded = Math.round(parsed * 10) / 10;
+          onChange(rounded);
+          setText(displayDecimalFromValue(rounded, blankZero));
+        }}
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (raw !== "" && !PARTIAL_DECIMAL.test(raw)) return;
+          setText(raw);
+          if (raw === "") {
+            onChange(0);
+            return;
+          }
+          const normalized = normalizeDecimalInput(raw);
+          const parsed = parseDecimalToNumber(normalized);
+          if (parsed === null) return;
+          onChange(parsed);
+        }}
+        className={inputClass}
+      />
+    </label>
+  );
+}
+
 function NumField({
   label,
   value,
@@ -220,7 +305,6 @@ function NumField({
         type="number"
         step={step}
         inputMode={inputMode}
-        lang="en"
         value={display}
         onChange={(e) => {
           const v = e.target.value;

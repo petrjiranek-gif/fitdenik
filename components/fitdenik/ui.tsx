@@ -10,4 +10,5 @@ export * from "@/components/fitdenik/training-form";
 export * from "@/components/fitdenik/training-overview";
 export * from "@/components/fitdenik/nutrition-log";
 export * from "@/components/fitdenik/benchmark-log";
+export * from "@/components/fitdenik/benchmarks-flow";
 export * from "@/components/fitdenik/imports-center";

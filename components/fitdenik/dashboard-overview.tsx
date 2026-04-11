@@ -5,6 +5,37 @@ import {
   getDashboardSummaryFromProvider,
   getRepositories,
 } from "@/lib/repositories/provider";
+import type { DashboardSummaryResponse } from "@/app/api/dashboard-summary/route";
+
+function todayPrague(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Prague" });
+}
+
+function StatusPill({
+  ok,
+  label,
+}: {
+  ok: boolean;
+  label: string;
+}) {
+  return (
+    <div
+      className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm ${
+        ok ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-zinc-200 bg-white text-zinc-600"
+      }`}
+    >
+      <span
+        className={`flex h-7 w-7 items-center justify-center rounded-full text-base font-bold ${
+          ok ? "bg-emerald-500 text-white" : "bg-zinc-200 text-zinc-500"
+        }`}
+        aria-hidden
+      >
+        {ok ? "✓" : "·"}
+      </span>
+      <span>{label}</span>
+    </div>
+  );
+}
 
 export function DashboardOverviewCards() {
   const repositories = useMemo(() => getRepositories(), []);
@@ -14,13 +45,7 @@ export function DashboardOverviewCards() {
     [repositories],
   );
   const fallbackSummary = useMemo(() => getDashboardSummaryFromProvider(), []);
-  const [remoteSummary, setRemoteSummary] = useState<{
-    weeklyTrainingCount: number;
-    weeklyMinutes: number;
-    weeklyCalories: number;
-    avgProtein: number;
-    latestBenchmarkLabel: string;
-  } | null>(null);
+  const [remote, setRemote] = useState<DashboardSummaryResponse | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -33,14 +58,8 @@ export function DashboardOverviewCards() {
           setSummaryError(result.error ?? "Nepodařilo se načíst souhrn dashboardu.");
           return;
         }
-        const result = (await response.json()) as {
-          weeklyTrainingCount: number;
-          weeklyMinutes: number;
-          weeklyCalories: number;
-          avgProtein: number;
-          latestBenchmarkLabel: string;
-        };
-        setRemoteSummary(result);
+        const result = (await response.json()) as DashboardSummaryResponse;
+        setRemote(result);
         setSummaryError(null);
       })
       .catch(() => {
@@ -48,41 +67,180 @@ export function DashboardOverviewCards() {
       });
   }, [useSupabase]);
 
-  const summary = useSupabase
-    ? remoteSummary ?? {
-        ...fallbackSummary,
-        latestBenchmarkLabel: "Načítám...",
+  const localExtra = useMemo(() => {
+    if (useSupabase) return null;
+    const today = todayPrague();
+    const sessions = [...repositories.training.list()].sort((a, b) => (a.date < b.date ? 1 : -1));
+    const nutrition = [...repositories.nutrition.list()].sort((a, b) => (a.date < b.date ? 1 : -1));
+    const withWeight = nutrition.filter((n) => n.bodyWeightKg > 0);
+    const latest = withWeight[0];
+    const benchmarks = [...repositories.benchmarks.list()].sort((a, b) => (a.date < b.date ? 1 : -1));
+    const latestBm = benchmarks[0];
+    return {
+      latestBodyWeightKg: latest?.bodyWeightKg ?? null,
+      latestWeightDate: latest?.date ?? null,
+      loggedTrainingToday: sessions.some((s) => s.date === today),
+      loggedNutritionToday: nutrition.some((n) => n.date === today),
+      loggedWeightToday: nutrition.some((n) => n.date === today && n.bodyWeightKg > 0),
+      recentTrainings: sessions.slice(0, 8).map((s) => ({
+        date: s.date,
+        title: s.title,
+        sport_type: s.sportType,
+        duration_min: s.durationMin,
+      })),
+      latestBenchmarkLabel: latestBm
+        ? `${latestBm.benchmarkName} ${latestBm.resultValue}`
+        : "Bez benchmarku",
+    };
+  }, [repositories, useSupabase]);
+
+  const summary: DashboardSummaryResponse = useSupabase
+    ? remote ?? {
+        weeklyTrainingCount: fallbackSummary.weeklyTrainingCount,
+        weeklyMinutes: fallbackSummary.weeklyMinutes,
+        weeklyCalories: fallbackSummary.weeklyCalories,
+        avgProtein: fallbackSummary.avgProtein,
+        latestBenchmarkLabel: "Načítám…",
+        latestBodyWeightKg: null,
+        latestWeightDate: null,
+        loggedTrainingToday: false,
+        loggedNutritionToday: false,
+        loggedWeightToday: false,
+        recentTrainings: [],
       }
     : {
         ...fallbackSummary,
-        latestBenchmarkLabel: "Lokální data",
+        latestBenchmarkLabel: localExtra?.latestBenchmarkLabel ?? "Bez benchmarku",
+        latestBodyWeightKg: localExtra?.latestBodyWeightKg ?? null,
+        latestWeightDate: localExtra?.latestWeightDate ?? null,
+        loggedTrainingToday: localExtra?.loggedTrainingToday ?? false,
+        loggedNutritionToday: localExtra?.loggedNutritionToday ?? false,
+        loggedWeightToday: localExtra?.loggedWeightToday ?? false,
+        recentTrainings: localExtra?.recentTrainings ?? [],
       };
 
+  const weightDelta =
+    summary.latestBodyWeightKg != null && baseline.baselineWeightKg > 0
+      ? summary.latestBodyWeightKg - baseline.baselineWeightKg
+      : null;
+
+  const weightDeltaLabel =
+    weightDelta == null
+      ? "—"
+      : weightDelta <= 0
+        ? `${weightDelta.toFixed(1)} kg`
+        : `+${weightDelta.toFixed(1)} kg`;
+
+  const weightDeltaHint =
+    weightDelta == null
+      ? "Doplň váhu ve výživě nebo baseline."
+      : weightDelta < 0
+        ? "Pod baseline (váha)."
+        : weightDelta === 0
+          ? "Na baseline."
+          : "Nad baseline.";
+
   return (
-    <div className="space-y-3">
+    <div className="space-y-6">
       {summaryError && (
         <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
           {summaryError}
         </div>
       )}
-      <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-7">
-        <Card label="Aktuální váha" value={`${baseline.baselineWeightKg} kg`} />
-        <Card label="Tréninky tento týden" value={`${summary.weeklyTrainingCount}`} />
-        <Card label="Aktivní čas" value={`${summary.weeklyMinutes} min`} />
-        <Card label="Týdenní kalorie" value={`${summary.weeklyCalories} kcal`} />
-        <Card label="Průměr bílkovin" value={`${summary.avgProtein} g`} />
-        <Card label="Poslední benchmark" value={summary.latestBenchmarkLabel} />
-        <Card label="Baseline tep" value={`${baseline.restingHeartRate} bpm`} />
-      </div>
+
+      <section aria-label="Stav dne">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Dnes · přehled plnění</h3>
+        <div className="grid gap-2 sm:grid-cols-3">
+          <StatusPill ok={summary.loggedTrainingToday} label="Trénink zapsán" />
+          <StatusPill ok={summary.loggedNutritionToday} label="Jídelníček / výživa" />
+          <StatusPill ok={summary.loggedWeightToday} label="Váha z výživy" />
+        </div>
+      </section>
+
+      <section aria-label="Klíčové metriky">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">7 dní · souhrn</h3>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Card
+            label="Váha vs. baseline"
+            value={summary.latestBodyWeightKg != null ? `${summary.latestBodyWeightKg} kg` : "—"}
+            sub={weightDeltaLabel}
+            hint={weightDeltaHint}
+            accent={weightDelta != null && weightDelta < 0 ? "positive" : weightDelta != null && weightDelta > 0 ? "warn" : "neutral"}
+          />
+          <Card label="Baseline (profil)" value={`${baseline.baselineWeightKg} kg`} hint="Výchozí váha v Baseline." />
+          <Card label="Baseline tep" value={`${baseline.restingHeartRate} bpm`} hint="Klidový tep z profilu." />
+          <Card
+            label="Poslední benchmark"
+            value={summary.latestBenchmarkLabel}
+            hint="Nejnovější záznam v DB."
+          />
+        </div>
+        <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <Card label="Tréninky (7 dní)" value={`${summary.weeklyTrainingCount}`} hint="Počet záznamů." />
+          <Card label="Aktivní čas" value={`${summary.weeklyMinutes} min`} hint="Součet délky." />
+          <Card label="Kalorie (trénink)" value={`${summary.weeklyCalories} kcal`} hint="Z tréninků za 7 dní." />
+          <Card label="Průměr bílkovin" value={`${summary.avgProtein} g`} hint="Z výživy za 7 dní." />
+        </div>
+      </section>
+
+      <section aria-label="Poslední tréninky">
+        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">Poslední tréninky</h3>
+        <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-zinc-50 text-left text-xs text-zinc-500">
+              <tr>
+                <th className="px-3 py-2 font-medium">Datum</th>
+                <th className="px-3 py-2 font-medium">Název</th>
+                <th className="px-3 py-2 font-medium">Sport</th>
+                <th className="px-3 py-2 font-medium">Čas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summary.recentTrainings.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-3 py-6 text-center text-zinc-500">
+                    Zatím žádné tréninky v databázi.
+                  </td>
+                </tr>
+              ) : (
+                summary.recentTrainings.map((row, i) => (
+                  <tr key={`${row.date}-${row.title}-${i}`} className="border-t border-zinc-100">
+                    <td className="px-3 py-2 whitespace-nowrap">{row.date}</td>
+                    <td className="px-3 py-2">{row.title}</td>
+                    <td className="px-3 py-2">{row.sport_type}</td>
+                    <td className="px-3 py-2">{row.duration_min} min</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }
 
-function Card({ label, value }: { label: string; value: string }) {
+function Card({
+  label,
+  value,
+  sub,
+  hint,
+  accent = "neutral",
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  hint?: string;
+  accent?: "positive" | "warn" | "neutral";
+}) {
+  const subColor =
+    accent === "positive" ? "text-emerald-700" : accent === "warn" ? "text-amber-700" : "text-zinc-600";
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
       <p className="text-xs text-zinc-500">{label}</p>
-      <p className="mt-1 text-lg font-semibold">{value}</p>
+      <p className="mt-1 text-lg font-semibold text-zinc-900">{value}</p>
+      {sub != null && sub !== "—" && <p className={`mt-0.5 text-sm font-medium ${subColor}`}>{sub}</p>}
+      {hint && <p className="mt-1 text-xs text-zinc-500">{hint}</p>}
     </div>
   );
 }

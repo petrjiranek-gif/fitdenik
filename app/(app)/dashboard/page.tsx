@@ -1,13 +1,11 @@
-import { DashboardOverviewCards, ModulePage } from "@/components/fitdenik/ui";
+import { DashboardOverviewCards } from "@/components/fitdenik/ui";
+import { DashboardHero } from "@/components/fitdenik/dashboard-hero";
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <DashboardHero />
       <DashboardOverviewCards />
-      <ModulePage
-        title="Přehled"
-        description="Rychlý souhrn tréninku, výživy, benchmarků a tělesných dat."
-      />
     </div>
   );
 }

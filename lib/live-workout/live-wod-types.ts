@@ -6,8 +6,8 @@ export type WodSegment = { label: string; reps: number };
 
 export type LiveWodDefinition = {
   key: string;
-  /** Benchmark „Girl/Hero“ vs CrossFit Open. */
-  kind: "benchmark" | "open";
+  /** Benchmark Girl/Hero, Open, nebo čistě bodyweight benchmark. */
+  kind: "benchmark" | "open" | "bodyweight";
   /** Zobrazovaný název */
   name: string;
   subtitle: string;

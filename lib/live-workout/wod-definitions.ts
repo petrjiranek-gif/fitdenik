@@ -4,6 +4,10 @@
  */
 
 import type { LiveWodDefinition } from "@/lib/live-workout/live-wod-types";
+import {
+  BODYWEIGHT_WODS,
+  type BodyweightWodKey,
+} from "@/lib/live-workout/bodyweight-wods-data";
 import { OPEN_WODS, type OpenWodKey } from "@/lib/live-workout/open-wods-data";
 
 export type { LiveWodDefinition, WodBenchmarkRow, WodSegment } from "@/lib/live-workout/live-wod-types";
@@ -17,9 +21,12 @@ export {
   OPEN_YEAR_MIN,
 } from "@/lib/live-workout/open-wods-data";
 
+export type { BodyweightWodKey } from "@/lib/live-workout/bodyweight-wods-data";
+export { BODYWEIGHT_WOD_ORDER, BODYWEIGHT_WODS } from "@/lib/live-workout/bodyweight-wods-data";
+
 export type CrossFitGirlKey = "annie" | "andi" | "angie" | "karen" | "kalsu" | "murph";
 
-export type LiveWodKey = CrossFitGirlKey | OpenWodKey;
+export type LiveWodKey = CrossFitGirlKey | OpenWodKey | BodyweightWodKey;
 
 /** @deprecated použij LiveWodDefinition */
 export type CrossFitWodDefinition = LiveWodDefinition;
@@ -148,6 +155,7 @@ export const CROSSFIT_WODS: Record<CrossFitGirlKey, LiveWodDefinition> = {
 export const LIVE_WODS: Record<LiveWodKey, LiveWodDefinition> = {
   ...CROSSFIT_WODS,
   ...OPEN_WODS,
+  ...BODYWEIGHT_WODS,
 };
 
 export const CROSSFIT_WOD_ORDER: CrossFitGirlKey[] = ["annie", "andi", "angie", "karen", "kalsu", "murph"];

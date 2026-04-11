@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  BODYWEIGHT_WOD_ORDER,
   CROSSFIT_WOD_ORDER,
   LIVE_WODS,
   OPEN_SEASON_YEAR_ORDER,
@@ -40,7 +41,7 @@ function andiProgressLabel(completed: number): string {
 }
 
 function segmentLabel(wod: LiveWodDefinition, completed: number): string {
-  if (wod.key === "angie") return angieProgressLabel(completed);
+  if (wod.key === "angie" || wod.key === "bw_angie") return angieProgressLabel(completed);
   if (wod.key === "andi") return andiProgressLabel(completed);
   if (wod.liveFinishAnytime && /amrap/i.test(wod.scoreType)) {
     return `${completed} dokončených opakování (AMRAP)`;
@@ -131,7 +132,7 @@ export function LiveTrainingFlow() {
     if (!wod || !wodKey) return;
     const durationSec = Math.floor(elapsedMs / 1000);
     const entry = saveLiveWorkoutLog({
-      sportCategory: "crossfit",
+      sportCategory: sport,
       wodKey,
       wodName: wod.name,
       durationSec,
@@ -149,7 +150,7 @@ export function LiveTrainingFlow() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry),
     }).catch(() => undefined);
-  }, [wod, wodKey, elapsedMs, completedReps, target]);
+  }, [sport, wod, wodKey, elapsedMs, completedReps, target]);
 
   const openActive = () => {
     if (!wodKey || !wod) return;
@@ -166,7 +167,7 @@ export function LiveTrainingFlow() {
       [
         { id: "crossfit" as const, label: "CrossFit", hint: "Benchmark nebo Open" },
         { id: "bodybuilding" as const, label: "Bodybuilding", hint: "brzy: série a váhy" },
-        { id: "bodyweight" as const, label: "Bodyweight", hint: "brzy: kliky, shyby…" },
+        { id: "bodyweight" as const, label: "Bodyweight", hint: "Girl / benchmark bez činky" },
       ] as const,
     [],
   );
@@ -316,10 +317,60 @@ export function LiveTrainingFlow() {
         </section>
       )}
 
-      {(sport === "bodybuilding" || sport === "bodyweight") && (
+      {sport === "bodyweight" && (
+        <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
+          <h3 className="text-base font-semibold text-zinc-100">2. Bodyweight — výběr WOD</h3>
+          <p className="mb-3 text-xs text-ew-muted">
+            Klasické benchmarky jen s vlastní vahou (WodWell). Blackjack, Cindy, Chelsea, Angie, Barbara, Annie, Tabata,
+            Death by Burpees, Pukie Brewster, Burpee Hour.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {BODYWEIGHT_WOD_ORDER.map((key) => {
+              const def = LIVE_WODS[key];
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    setWodKey(key);
+                    setActiveOpen(false);
+                  }}
+                  className={`rounded-lg border px-3 py-2 text-sm ${
+                    wodKey === key
+                      ? "border-ew-blue-light bg-ew-bg text-white"
+                      : "border-ew-border text-zinc-300 hover:border-zinc-500"
+                  }`}
+                >
+                  {def.name}
+                </button>
+              );
+            })}
+          </div>
+          {wod && sport === "bodyweight" && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setPrescriptionOpen(true)}
+                className="rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-sm text-ew-blue-light hover:border-ew-blue-light"
+              >
+                Zobrazit předpis a časy
+              </button>
+              <button
+                type="button"
+                onClick={openActive}
+                className="rounded-md bg-ew-blue px-3 py-2 text-sm text-white hover:bg-ew-blue-dark"
+              >
+                Spustit čas + počítadlo
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+
+      {sport === "bodybuilding" && (
         <section className="rounded-xl border border-dashed border-ew-border bg-ew-bg p-6 text-sm text-ew-muted">
-          Režim <strong className="text-zinc-300">{sport === "bodybuilding" ? "Bodybuilding" : "Bodyweight"}</strong>{" "}
-          připravíme v další verzi (série, váhy, odpočinek). Zatím použij záložku Trénink nebo Importy.
+          Režim <strong className="text-zinc-300">Bodybuilding</strong> připravíme v další verzi (série, váhy, odpočinek).
+          Zatím použij záložku Trénink nebo Importy.
         </section>
       )}
 

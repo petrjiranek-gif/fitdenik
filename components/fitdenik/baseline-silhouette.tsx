@@ -7,6 +7,11 @@ function fmtCm(n: number) {
   return `${n} cm`;
 }
 
+function fmtKg(n: number) {
+  if (n == null || Number.isNaN(n) || n <= 0) return "—";
+  return `${Number(n.toFixed(2))} kg`;
+}
+
 /** Jednoduchá přední silueta + popisky podle zadaných obvodů (baseline). */
 export function BaselineSilhouette({
   data,
@@ -25,7 +30,7 @@ export function BaselineSilhouette({
     | "calfCm"
   >;
 }) {
-  const w = data.baselineWeightKg > 0 ? `${data.baselineWeightKg} kg` : "—";
+  const w = fmtKg(data.baselineWeightKg);
 
   return (
     <div className="rounded-xl border border-ew-border bg-ew-bg/80 p-4">

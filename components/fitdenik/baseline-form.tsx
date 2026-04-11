@@ -11,7 +11,7 @@ const inputClass =
 function bmiFromHeightWeight(weightKg: number, heightCm: number): number | null {
   if (weightKg <= 0 || heightCm <= 0) return null;
   const m = heightCm / 100;
-  return Math.round((weightKg / (m * m)) * 10) / 10;
+  return Math.round((weightKg / (m * m)) * 100) / 100;
 }
 
 export function BaselineForm() {
@@ -56,7 +56,7 @@ export function BaselineForm() {
                 label="Výchozí váha (kg)"
                 value={form.baselineWeightKg}
                 onChange={(n) => setNum("baselineWeightKg", n)}
-                step="0.1"
+                step="0.01"
                 blankZero={false}
               />
               <label className="grid gap-1 text-sm">
@@ -81,16 +81,16 @@ export function BaselineForm() {
               </p>
             )}
             <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <NumField label="BMI (z váhy)" value={form.scaleBmi} onChange={(n) => setNum("scaleBmi", n)} step="0.1" />
-              <NumField label="Tělesný tuk (%)" value={form.scaleBodyFatPct} onChange={(n) => setNum("scaleBodyFatPct", n)} step="0.1" />
-              <NumField label="Svalová hmota (kg)" value={form.scaleMuscleMassKg} onChange={(n) => setNum("scaleMuscleMassKg", n)} step="0.1" />
-              <NumField label="Tělesná voda (%)" value={form.scaleBodyWaterPct} onChange={(n) => setNum("scaleBodyWaterPct", n)} step="0.1" />
-              <NumField label="Libová hmota (kg)" value={form.scaleLeanMassKg} onChange={(n) => setNum("scaleLeanMassKg", n)} step="0.1" />
-              <NumField label="Kostní hmota (kg)" value={form.scaleBoneMassKg} onChange={(n) => setNum("scaleBoneMassKg", n)} step="0.1" />
-              <NumField label="Bílkoviny (%)" value={form.scaleProteinPct} onChange={(n) => setNum("scaleProteinPct", n)} step="0.1" />
-              <NumField label="Viscerální tuk" value={form.scaleVisceralFat} onChange={(n) => setNum("scaleVisceralFat", n)} step="1" />
-              <NumField label="BMR (kcal/den)" value={form.scaleBmrKcal} onChange={(n) => setNum("scaleBmrKcal", n)} step="1" />
-              <NumField label="Metabolický věk" value={form.scaleMetabolicAge} onChange={(n) => setNum("scaleMetabolicAge", n)} step="1" />
+              <NumField label="BMI (z váhy)" value={form.scaleBmi} onChange={(n) => setNum("scaleBmi", n)} step="0.01" />
+              <NumField label="Tělesný tuk (%)" value={form.scaleBodyFatPct} onChange={(n) => setNum("scaleBodyFatPct", n)} step="0.01" />
+              <NumField label="Svalová hmota (kg)" value={form.scaleMuscleMassKg} onChange={(n) => setNum("scaleMuscleMassKg", n)} step="0.01" />
+              <NumField label="Tělesná voda (%)" value={form.scaleBodyWaterPct} onChange={(n) => setNum("scaleBodyWaterPct", n)} step="0.01" />
+              <NumField label="Libová hmota (kg)" value={form.scaleLeanMassKg} onChange={(n) => setNum("scaleLeanMassKg", n)} step="0.01" />
+              <NumField label="Kostní hmota (kg)" value={form.scaleBoneMassKg} onChange={(n) => setNum("scaleBoneMassKg", n)} step="0.01" />
+              <NumField label="Bílkoviny (%)" value={form.scaleProteinPct} onChange={(n) => setNum("scaleProteinPct", n)} step="0.01" />
+              <NumField label="Viscerální tuk" value={form.scaleVisceralFat} onChange={(n) => setNum("scaleVisceralFat", n)} step="0.01" />
+              <NumField label="BMR (kcal/den)" value={form.scaleBmrKcal} onChange={(n) => setNum("scaleBmrKcal", n)} step="0.01" />
+              <NumField label="Metabolický věk" value={form.scaleMetabolicAge} onChange={(n) => setNum("scaleMetabolicAge", n)} step="0.01" />
             </div>
           </section>
 
@@ -98,7 +98,7 @@ export function BaselineForm() {
             <h3 className="border-b border-ew-border pb-2 text-base font-semibold text-zinc-100">Osobní údaje</h3>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
               <NumField label="Věk" value={form.age} onChange={(n) => setNum("age", n)} step="1" blankZero={false} />
-              <NumField label="Výška (cm)" value={form.heightCm} onChange={(n) => setNum("heightCm", n)} step="0.1" blankZero={false} />
+              <NumField label="Výška (cm)" value={form.heightCm} onChange={(n) => setNum("heightCm", n)} step="0.01" blankZero={false} />
             </div>
           </section>
 
@@ -123,7 +123,7 @@ export function BaselineForm() {
           <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
             <h3 className="border-b border-ew-border pb-2 text-base font-semibold text-zinc-100">Cíle</h3>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <NumField label="Cílová váha (kg)" value={form.targetWeightKg} onChange={(n) => setNum("targetWeightKg", n)} step="0.1" />
+              <NumField label="Cílová váha (kg)" value={form.targetWeightKg} onChange={(n) => setNum("targetWeightKg", n)} step="0.01" />
               <label className="grid gap-1 text-sm">
                 <span className="text-zinc-400">Cílové datum (volitelné)</span>
                 <input
@@ -149,7 +149,7 @@ export function BaselineForm() {
           <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
             <h3 className="border-b border-ew-border pb-2 text-base font-semibold text-zinc-100">Další</h3>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <NumField label="Odhad tuku (%), ručně" value={form.estimatedBodyFatPct} onChange={(n) => setNum("estimatedBodyFatPct", n)} step="0.1" />
+              <NumField label="Odhad tuku (%), ručně" value={form.estimatedBodyFatPct} onChange={(n) => setNum("estimatedBodyFatPct", n)} step="0.01" />
               <NumField label="Klidový tep" value={form.restingHeartRate} onChange={(n) => setNum("restingHeartRate", n)} step="1" />
             </div>
             <label className="mt-3 grid gap-1 text-sm">

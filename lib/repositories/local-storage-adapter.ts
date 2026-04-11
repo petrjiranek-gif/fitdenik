@@ -4,11 +4,13 @@ import {
   nutritionEntries,
   trainingSessions,
 } from "@/lib/mock-data";
-import type { BenchmarkResult, NutritionEntry, TrainingSession } from "@/lib/types";
+import type { BenchmarkResult, BodyMeasurementEntry, NutritionEntry, TrainingSession } from "@/lib/types";
 import type {
   AppRepositories,
   BaselineInput,
   BenchmarkRepository,
+  BodyMeasurementInput,
+  BodyMeasurementRepository,
   NutritionRepository,
   TrainingRepository,
 } from "@/lib/repositories/contracts";
@@ -17,6 +19,7 @@ const BASELINE_STORAGE_KEY = "fitdenik.baseline.v1";
 const TRAINING_STORAGE_KEY = "fitdenik.training.v1";
 const NUTRITION_STORAGE_KEY = "fitdenik.nutrition.v1";
 const BENCHMARK_STORAGE_KEY = "fitdenik.benchmarks.v1";
+const BODY_MEASUREMENTS_KEY = "fitdenik.bodyMeasurements.v1";
 
 function readStorage<T>(key: string): T[] | null {
   if (typeof window === "undefined") return null;
@@ -67,11 +70,23 @@ const benchmarkRepo: BenchmarkRepository = {
   },
 };
 
+const bodyMeasurementsRepo: BodyMeasurementRepository = {
+  list() {
+    return readStorage<BodyMeasurementEntry>(BODY_MEASUREMENTS_KEY) ?? [];
+  },
+  create(input: BodyMeasurementInput) {
+    const next: BodyMeasurementEntry = { id: crypto.randomUUID(), userId: "u1", ...input };
+    writeStorage(BODY_MEASUREMENTS_KEY, [next, ...this.list()]);
+    return next;
+  },
+};
+
 function getBaselineDefaults(): BaselineInput {
   return createBaselineDefaults();
 }
 
 export const localStorageRepositories: AppRepositories = {
+  bodyMeasurements: bodyMeasurementsRepo,
   baseline: {
     getDefaults() {
       return getBaselineDefaults();

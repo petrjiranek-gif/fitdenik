@@ -6,9 +6,14 @@ import {
   getRepositories,
 } from "@/lib/repositories/provider";
 import type { DashboardSummaryResponse } from "@/app/api/dashboard-summary/route";
+import { WeightSparkline } from "@/components/fitdenik/weight-sparkline";
 
 function todayPrague(): string {
   return new Date().toLocaleDateString("en-CA", { timeZone: "Europe/Prague" });
+}
+
+function datePragueFromIso(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-CA", { timeZone: "Europe/Prague" });
 }
 
 function StatusPill({
@@ -75,15 +80,44 @@ export function DashboardOverviewCards() {
     const sessions = [...repositories.training.list()].sort((a, b) => (a.date < b.date ? 1 : -1));
     const nutrition = [...repositories.nutrition.list()].sort((a, b) => (a.date < b.date ? 1 : -1));
     const withWeight = nutrition.filter((n) => n.bodyWeightKg > 0);
-    const latest = withWeight[0];
+    const nLatest = withWeight[0];
+    const measurements = [...repositories.bodyMeasurements.list()].sort((a, b) =>
+      b.measuredAt.localeCompare(a.measuredAt),
+    );
+    const mLatest = measurements[0];
+
+    let latestBodyWeightKg: number | null = null;
+    let latestWeightDate: string | null = null;
+    if (mLatest && nLatest) {
+      const mt = new Date(mLatest.measuredAt).getTime();
+      const nt = new Date(`${nLatest.date}T12:00:00`).getTime();
+      if (mt >= nt) {
+        latestBodyWeightKg = mLatest.weightKg;
+        latestWeightDate = datePragueFromIso(mLatest.measuredAt);
+      } else {
+        latestBodyWeightKg = nLatest.bodyWeightKg;
+        latestWeightDate = nLatest.date;
+      }
+    } else if (mLatest) {
+      latestBodyWeightKg = mLatest.weightKg;
+      latestWeightDate = datePragueFromIso(mLatest.measuredAt);
+    } else if (nLatest) {
+      latestBodyWeightKg = nLatest.bodyWeightKg;
+      latestWeightDate = nLatest.date;
+    }
+
+    const loggedMeasurementToday = measurements.some((m) => datePragueFromIso(m.measuredAt) === today);
+    const loggedWeightFromNutrition = nutrition.some((n) => n.date === today && n.bodyWeightKg > 0);
+
     const benchmarks = [...repositories.benchmarks.list()].sort((a, b) => (a.date < b.date ? 1 : -1));
     const latestBm = benchmarks[0];
     return {
-      latestBodyWeightKg: latest?.bodyWeightKg ?? null,
-      latestWeightDate: latest?.date ?? null,
+      latestBodyWeightKg,
+      latestWeightDate,
+      measurementEntries: measurements,
       loggedTrainingToday: sessions.some((s) => s.date === today),
       loggedNutritionToday: nutrition.some((n) => n.date === today),
-      loggedWeightToday: nutrition.some((n) => n.date === today && n.bodyWeightKg > 0),
+      loggedWeightToday: loggedWeightFromNutrition || loggedMeasurementToday,
       recentTrainings: sessions.slice(0, 8).map((s) => ({
         date: s.date,
         title: s.title,
@@ -135,12 +169,17 @@ export function DashboardOverviewCards() {
 
   const weightDeltaHint =
     weightDelta == null
-      ? "Doplň váhu ve výživě nebo baseline."
+      ? "Doplň váhu v měření, výživě nebo Baseline."
       : weightDelta < 0
         ? "Pod baseline (váha)."
         : weightDelta === 0
           ? "Na baseline."
           : "Nad baseline.";
+
+  const measurementEntriesForChart = useMemo(() => {
+    if (useSupabase) return [];
+    return localExtra?.measurementEntries ?? [];
+  }, [useSupabase, localExtra]);
 
   return (
     <div className="space-y-6">
@@ -155,7 +194,7 @@ export function DashboardOverviewCards() {
         <div className="grid gap-2 sm:grid-cols-3">
           <StatusPill ok={summary.loggedTrainingToday} label="Trénink zapsán" />
           <StatusPill ok={summary.loggedNutritionToday} label="Jídelníček / výživa" />
-          <StatusPill ok={summary.loggedWeightToday} label="Váha z výživy" />
+          <StatusPill ok={summary.loggedWeightToday} label="Váha zapsána (měření / výživa)" />
         </div>
       </section>
 
@@ -184,6 +223,18 @@ export function DashboardOverviewCards() {
           <Card label="Průměr bílkovin" value={`${summary.avgProtein} g`} hint="Z výživy za 7 dní." />
         </div>
       </section>
+
+      {!useSupabase && (
+        <section aria-label="Vývoj váhy">
+          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ew-muted">Měření těla · váha v čase</h3>
+          <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
+            <WeightSparkline entries={measurementEntriesForChart} />
+            <p className="mt-2 text-xs text-ew-muted">
+              Data z lokálních záznamů „Nové měření“. Po nasazení Supabase půjde historie synchronizovat i na server.
+            </p>
+          </div>
+        </section>
+      )}
 
       <section aria-label="Poslední tréninky">
         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-ew-muted">Poslední tréninky</h3>

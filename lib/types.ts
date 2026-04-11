@@ -44,6 +44,35 @@ export interface BodyMetrics {
   notes: string;
 }
 
+/** Jedno časované měření (váha + chytrá váha + obvody), ukládá se do historie. */
+export interface BodyMeasurementEntry {
+  id: string;
+  userId: string;
+  /** ISO 8601 (datum a čas měření). */
+  measuredAt: string;
+  weightKg: number;
+  scaleBmi: number;
+  scaleBodyFatPct: number;
+  scaleMuscleMassKg: number;
+  scaleBodyWaterPct: number;
+  scaleLeanMassKg: number;
+  scaleBoneMassKg: number;
+  scaleProteinPct: number;
+  scaleVisceralFat: number;
+  scaleBmrKcal: number;
+  scaleMetabolicAge: number;
+  neckCm: number;
+  chestRelaxedCm: number;
+  chestFlexedCm: number;
+  armRelaxedCm: number;
+  armFlexedCm: number;
+  waistCm: number;
+  hipsCm: number;
+  thighCm: number;
+  calfCm: number;
+  notes: string;
+}
+
 export interface TrainingSession {
   id: string;
   userId: string;

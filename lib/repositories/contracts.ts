@@ -1,4 +1,10 @@
-import type { BenchmarkResult, NutritionEntry, TrainingSession, UserProfile } from "@/lib/types";
+import type {
+  BenchmarkResult,
+  BodyMeasurementEntry,
+  NutritionEntry,
+  TrainingSession,
+  UserProfile,
+} from "@/lib/types";
 
 export type BaselineInput = Pick<
   UserProfile,
@@ -62,9 +68,17 @@ export interface BenchmarkRepository {
   create(input: Omit<BenchmarkResult, "id" | "userId">): BenchmarkResult;
 }
 
+export type BodyMeasurementInput = Omit<BodyMeasurementEntry, "id" | "userId">;
+
+export interface BodyMeasurementRepository {
+  list(): BodyMeasurementEntry[];
+  create(input: BodyMeasurementInput): BodyMeasurementEntry;
+}
+
 export interface AppRepositories {
   baseline: BaselineRepository;
   training: TrainingRepository;
   nutrition: NutritionRepository;
   benchmarks: BenchmarkRepository;
+  bodyMeasurements: BodyMeasurementRepository;
 }

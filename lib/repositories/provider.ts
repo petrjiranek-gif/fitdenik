@@ -21,6 +21,7 @@ export function getRepositories(): AppRepositories {
     training: supabaseRepositories.training,
     nutrition: localStorageRepositories.nutrition,
     benchmarks: localStorageRepositories.benchmarks,
+    bodyMeasurements: localStorageRepositories.bodyMeasurements,
   };
 }
 

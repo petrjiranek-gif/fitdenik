@@ -15,10 +15,10 @@ export function Header() {
         {!hideQuickActions && (
           <div className="flex gap-2">
             <Link
-              href="/training/new"
+              href="/measurements/new"
               className="rounded-md bg-ew-blue px-3 py-2 text-sm text-white hover:bg-ew-blue-dark"
             >
-              Nový trénink
+              Nové měření
             </Link>
             {!hideImportLink && (
               <Link

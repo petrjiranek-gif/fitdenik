@@ -58,4 +58,13 @@ export const supabaseRepositories: AppRepositories = {
       notImplemented("benchmarks.create");
     },
   },
+  bodyMeasurements: {
+    list() {
+      return [];
+    },
+    create(input) {
+      void input;
+      notImplemented("bodyMeasurements.create");
+    },
+  },
 };

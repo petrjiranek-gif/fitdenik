@@ -3,6 +3,7 @@ export * from "@/components/fitdenik/module-page";
 export * from "@/components/fitdenik/source-learning";
 export * from "@/components/fitdenik/live-workout";
 export * from "@/components/fitdenik/baseline-form";
+export * from "@/components/fitdenik/measurement-form";
 export * from "@/components/fitdenik/dashboard-overview";
 export * from "@/components/fitdenik/training-log";
 export * from "@/components/fitdenik/nutrition-log";

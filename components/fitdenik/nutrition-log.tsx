@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { formInputClass } from "@/components/fitdenik/form-fields";
 import { getFitdenikUserId } from "@/lib/fitdenik-user-id";
 import { getRepositories } from "@/lib/repositories/provider";
 import type { NutritionEntry } from "@/lib/types";
@@ -16,6 +17,8 @@ export function NutritionLog() {
   const [carbs, setCarbs] = useState(230);
   const [fat, setFat] = useState(70);
   const [waterLiters, setWaterLiters] = useState(2.5);
+  /** 0 = neukládat váhu do výživy (dřív tu byl omylem fix 85,5 kg a kazilo to Přehled). */
+  const [bodyWeightKg, setBodyWeightKg] = useState(0);
   const [notes, setNotes] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -47,7 +50,7 @@ export function NutritionLog() {
       fat,
       fiber: 30,
       waterLiters,
-      bodyWeightKg: 85.5,
+      bodyWeightKg: bodyWeightKg > 0 ? bodyWeightKg : 0,
       notes,
     };
 
@@ -93,66 +96,86 @@ export function NutritionLog() {
           </p>
         </div>
         <label className="grid gap-1 text-sm">
-          <span className="text-zinc-600">Kalorie (kcal)</span>
+          <span className="text-zinc-400">Kalorie (kcal)</span>
           <input
             type="number"
             value={calories}
             onChange={(e) => setCalories(Number(e.target.value))}
             placeholder="Např. 2200"
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={formInputClass}
           />
         </label>
         <label className="grid gap-1 text-sm">
-          <span className="text-zinc-600">Bílkoviny (g)</span>
+          <span className="text-zinc-400">Bílkoviny (g)</span>
           <input
             type="number"
             value={protein}
             onChange={(e) => setProtein(Number(e.target.value))}
             placeholder="Např. 170"
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={formInputClass}
           />
         </label>
         <label className="grid gap-1 text-sm">
-          <span className="text-zinc-600">Sacharidy (g)</span>
+          <span className="text-zinc-400">Sacharidy (g)</span>
           <input
             type="number"
             value={carbs}
             onChange={(e) => setCarbs(Number(e.target.value))}
             placeholder="Např. 230"
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={formInputClass}
           />
         </label>
         <label className="grid gap-1 text-sm">
-          <span className="text-zinc-600">Tuky (g)</span>
+          <span className="text-zinc-400">Tuky (g)</span>
           <input
             type="number"
             value={fat}
             onChange={(e) => setFat(Number(e.target.value))}
             placeholder="Např. 70"
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={formInputClass}
           />
         </label>
         <label className="grid gap-1 text-sm">
-          <span className="text-zinc-600">Voda (litry)</span>
+          <span className="text-zinc-400">Voda (litry)</span>
           <input
             type="number"
             step="0.1"
             value={waterLiters}
             onChange={(e) => setWaterLiters(Number(e.target.value))}
             placeholder="Např. 2.5"
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={formInputClass}
           />
         </label>
         <label className="grid gap-1 text-sm">
-          <span className="text-zinc-600">Poznámka</span>
+          <span className="text-zinc-400">Váha (kg) pro přehled — volitelné</span>
+          <input
+            type="number"
+            step="0.1"
+            min={0}
+            value={bodyWeightKg || ""}
+            onChange={(e) => setBodyWeightKg(Number(e.target.value) || 0)}
+            placeholder="Nevyplňuj, pokud nechceš ukládat váhu (0)"
+            className={formInputClass}
+          />
+          <span className="text-[11px] text-zinc-500">
+            Jen pokud chceš propojit denní výživu s kartou „Váha vs. baseline“. Prázdné/0 = neukládat.
+          </span>
+        </label>
+        <label className="grid gap-1 text-sm">
+          <span className="text-zinc-400">Poznámka</span>
           <input
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Např. vyšší sacharidy po těžkém tréninku"
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm"
+            className={formInputClass}
           />
         </label>
-        <button className="rounded-md bg-zinc-900 px-3 py-2 text-sm text-white md:col-span-3">Přidat výživu</button>
+        <button
+          type="submit"
+          className="rounded-md bg-ew-blue px-3 py-2 text-sm font-medium text-white hover:opacity-90 md:col-span-3"
+        >
+          Přidat výživu
+        </button>
       </form>
       {errorMessage && (
         <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">

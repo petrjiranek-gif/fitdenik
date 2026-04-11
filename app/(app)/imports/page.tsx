@@ -1,4 +1,3 @@
-import { LocalStorageBackupPanel } from "@/components/fitdenik/local-storage-backup";
 import { ImportsCenter, ModulePage } from "@/components/fitdenik/ui";
 
 export default function ImportsPage() {
@@ -12,7 +11,6 @@ export default function ImportsPage() {
         showTable={false}
         showDrilldown={false}
       />
-      <LocalStorageBackupPanel />
       <ImportsCenter />
     </div>
   );

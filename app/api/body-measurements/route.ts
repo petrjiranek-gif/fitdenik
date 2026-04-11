@@ -32,7 +32,15 @@ export async function GET() {
     .limit(200);
 
   if (error) {
-    return NextResponse.json({ error: `Měření: ${error.message}` }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: `Měření: ${error.message}`,
+        ...(error.message.includes("Could not find the table") && {
+          hint: "V Supabase → SQL spusť soubor supabase/migrations/001_baseline_body_measurements.sql (vytvoří tabulku body_measurement_entries).",
+        }),
+      },
+      { status: 500 },
+    );
   }
 
   const entries = (data as Row[]).map(toEntry);
@@ -55,7 +63,15 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
-    return NextResponse.json({ error: `Uložení měření: ${error.message}` }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: `Uložení měření: ${error.message}`,
+        ...(error.message.includes("Could not find the table") && {
+          hint: "V Supabase → SQL spusť soubor supabase/migrations/001_baseline_body_measurements.sql (vytvoří tabulku body_measurement_entries).",
+        }),
+      },
+      { status: 500 },
+    );
   }
 
   return NextResponse.json({ entry: toEntry(data as Row) }, { status: 201 });

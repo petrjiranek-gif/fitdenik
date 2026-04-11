@@ -83,8 +83,9 @@ export function MeasurementForm() {
         }),
       });
       if (!response.ok) {
-        const result = (await response.json()) as { error?: string };
-        setError(result.error ?? "Uložení se nezdařilo.");
+        const result = (await response.json()) as { error?: string; hint?: string };
+        const msg = [result.error, result.hint].filter(Boolean).join(" ");
+        setError(msg || "Uložení se nezdařilo.");
         return;
       }
     } else {

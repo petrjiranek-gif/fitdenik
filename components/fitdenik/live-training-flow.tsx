@@ -5,9 +5,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CROSSFIT_WOD_ORDER,
   LIVE_WODS,
-  OPEN_WOD_ORDER,
+  OPEN_SEASON_YEAR_ORDER,
+  OPEN_WOD_KEYS_BY_YEAR,
+  OPEN_YEAR_MIN,
   type LiveWodDefinition,
   type LiveWodKey,
+  type OpenSeasonYear,
   totalTargetReps,
 } from "@/lib/live-workout/wod-definitions";
 import { saveLiveWorkoutLog } from "@/lib/live-workout/persist-log";
@@ -39,6 +42,9 @@ function andiProgressLabel(completed: number): string {
 function segmentLabel(wod: LiveWodDefinition, completed: number): string {
   if (wod.key === "angie") return angieProgressLabel(completed);
   if (wod.key === "andi") return andiProgressLabel(completed);
+  if (wod.liveFinishAnytime && /amrap/i.test(wod.scoreType)) {
+    return `${completed} dokončených opakování (AMRAP)`;
+  }
   const t = totalTargetReps(wod);
   return `${completed} / ${t}`;
 }
@@ -47,6 +53,7 @@ export function LiveTrainingFlow() {
   const [sport, setSport] = useState<LiveSportCategory>("crossfit");
   /** Benchmark „Girl/Hero“ vs CrossFit Open. */
   const [cfKind, setCfKind] = useState<"benchmark" | "open">("benchmark");
+  const [openYear, setOpenYear] = useState<OpenSeasonYear>(OPEN_SEASON_YEAR_ORDER[0]);
   const [wodKey, setWodKey] = useState<LiveWodKey | null>(null);
   const [prescriptionOpen, setPrescriptionOpen] = useState(false);
   const [activeOpen, setActiveOpen] = useState(false);
@@ -60,6 +67,19 @@ export function LiveTrainingFlow() {
   const wod = wodKey ? LIVE_WODS[wodKey] : null;
   const target = wod ? totalTargetReps(wod) : 0;
   const remaining = Math.max(0, target - completedReps);
+  const hideRepRemaining =
+    wod?.liveFinishAnytime === true && (target >= 9000 || /amrap/i.test(wod.scoreType));
+  const canFinishSession = Boolean(
+    wod && (wod.liveFinishAnytime || completedReps >= target),
+  );
+
+  useEffect(() => {
+    if (cfKind !== "open" || wodKey == null) return;
+    const allowed = OPEN_WOD_KEYS_BY_YEAR[openYear];
+    if (!(allowed as readonly string[]).includes(wodKey)) {
+      setWodKey(null);
+    }
+  }, [cfKind, openYear, wodKey]);
 
   useEffect(() => {
     if (!running) return;
@@ -206,6 +226,7 @@ export function LiveTrainingFlow() {
               type="button"
               onClick={() => {
                 setCfKind("open");
+                setOpenYear(OPEN_SEASON_YEAR_ORDER[0]);
                 setWodKey(null);
                 setActiveOpen(false);
               }}
@@ -218,28 +239,62 @@ export function LiveTrainingFlow() {
               Open
             </button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            {(cfKind === "benchmark" ? CROSSFIT_WOD_ORDER : OPEN_WOD_ORDER).map((key) => {
-              const def = LIVE_WODS[key];
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => {
-                    setWodKey(key);
-                    setActiveOpen(false);
-                  }}
-                  className={`rounded-lg border px-3 py-2 text-sm ${
-                    wodKey === key
-                      ? "border-ew-blue-light bg-ew-bg text-white"
-                      : "border-ew-border text-zinc-300 hover:border-zinc-500"
-                  }`}
-                >
-                  {def.name}
-                </button>
-              );
-            })}
-          </div>
+          {cfKind === "open" && (
+            <div className="mb-3">
+              <label className="mb-2 block text-xs font-medium text-zinc-400" htmlFor="open-year-select">
+                Ročník (Open, {OPEN_YEAR_MIN}–{OPEN_SEASON_YEAR_ORDER[0]})
+              </label>
+              <select
+                id="open-year-select"
+                value={openYear}
+                onChange={(e) => {
+                  setOpenYear(Number(e.target.value) as OpenSeasonYear);
+                  setWodKey(null);
+                  setActiveOpen(false);
+                }}
+                className="w-full max-w-xs rounded-lg border border-ew-border bg-ew-bg px-3 py-2 text-sm text-white"
+              >
+                {OPEN_SEASON_YEAR_ORDER.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-ew-muted">
+                Pro každý rok 2011+ jsou tři workouty (odkaz na WodWell). Rok {OPEN_YEAR_MIN}: formát Open ještě neexistoval.
+              </p>
+            </div>
+          )}
+          {cfKind === "open" && OPEN_WOD_KEYS_BY_YEAR[openYear].length === 0 ? (
+            <p className="rounded-lg border border-amber-500/30 bg-amber-950/40 px-3 py-2 text-sm text-amber-100/90">
+              CrossFit Open začalo v roce 2011 — zvol rok 2011 nebo novější a zobrazí se Open 1–3.
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {(cfKind === "benchmark" ? CROSSFIT_WOD_ORDER : OPEN_WOD_KEYS_BY_YEAR[openYear]).map(
+                (key: LiveWodKey) => {
+                  const def = LIVE_WODS[key];
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => {
+                        setWodKey(key);
+                        setActiveOpen(false);
+                      }}
+                      className={`rounded-lg border px-3 py-2 text-sm ${
+                        wodKey === key
+                          ? "border-ew-blue-light bg-ew-bg text-white"
+                          : "border-ew-border text-zinc-300 hover:border-zinc-500"
+                      }`}
+                    >
+                      {def.name}
+                    </button>
+                  );
+                },
+              )}
+            </div>
+          )}
           {wod && (
             <div className="mt-4 flex flex-wrap gap-2">
               <button
@@ -340,7 +395,10 @@ export function LiveTrainingFlow() {
             <h3 id="live-session-title" className="text-lg font-semibold text-white">
               {wod.name} — živý průběh
             </h3>
-            <p className="text-xs text-ew-muted">{segmentLabel(wod, completedReps)} · zbývá {remaining}</p>
+            <p className="text-xs text-ew-muted">
+              {segmentLabel(wod, completedReps)}
+              {!hideRepRemaining && ` · zbývá ${remaining}`}
+            </p>
 
             <div className="mt-4 rounded-xl border border-ew-border bg-ew-panel p-4 text-center">
               <p className="text-xs text-ew-muted">Čas (od startu)</p>
@@ -401,7 +459,7 @@ export function LiveTrainingFlow() {
               </button>
               <button
                 type="button"
-                disabled={completedReps < target}
+                disabled={!canFinishSession}
                 onClick={finishAndSave}
                 className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
               >

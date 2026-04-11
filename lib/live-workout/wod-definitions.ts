@@ -3,34 +3,23 @@
  * Inspirace rozložením jako na WodWell — texty vlastní / zkrácené.
  */
 
+import type { LiveWodDefinition } from "@/lib/live-workout/live-wod-types";
+import { OPEN_WODS, type OpenWodKey } from "@/lib/live-workout/open-wods-data";
+
+export type { LiveWodDefinition, WodBenchmarkRow, WodSegment } from "@/lib/live-workout/live-wod-types";
+
+export type { OpenSeasonYear, OpenWodKey } from "@/lib/live-workout/open-wods-data";
+export {
+  OPEN_SEASON_YEAR_ORDER,
+  OPEN_WOD_KEYS_BY_YEAR,
+  OPEN_WODS,
+  OPEN_YEAR_MAX,
+  OPEN_YEAR_MIN,
+} from "@/lib/live-workout/open-wods-data";
+
 export type CrossFitGirlKey = "annie" | "andi" | "angie" | "karen" | "kalsu" | "murph";
 
-/** CrossFit Open (jednotlivé ročníky / části). */
-export type OpenWodKey = "open_26_1";
-
 export type LiveWodKey = CrossFitGirlKey | OpenWodKey;
-
-export type WodBenchmarkRow = { level: string; timeRange: string };
-
-export type WodSegment = { label: string; reps: number };
-
-export type LiveWodDefinition = {
-  key: LiveWodKey;
-  /** Benchmark „Girl/Hero“ vs CrossFit Open. */
-  kind: "benchmark" | "open";
-  /** Zobrazovaný název */
-  name: string;
-  subtitle: string;
-  scoreType: string;
-  prescription: string;
-  description: string;
-  /** Jedna součtová série nebo více bloků (Angie, Murph…) */
-  segments: WodSegment[];
-  benchmarks: WodBenchmarkRow[];
-  referenceUrl: string;
-  /** U Open WOD často oficiální cap (minuty). */
-  timeCapMin?: number;
-};
 
 /** @deprecated použij LiveWodDefinition */
 export type CrossFitWodDefinition = LiveWodDefinition;
@@ -155,32 +144,6 @@ export const CROSSFIT_WODS: Record<CrossFitGirlKey, LiveWodDefinition> = {
     referenceUrl: "https://www.wodwell.com/wod/murph/",
   },
 };
-
-/** CrossFit Open — aktuálně jeden předpis; další ročníky lze doplnit stejně. */
-export const OPEN_WODS: Record<OpenWodKey, LiveWodDefinition> = {
-  open_26_1: {
-    key: "open_26_1",
-    kind: "open",
-    name: "Open 26.1",
-    subtitle: "2026 CrossFit Open — Workout #1",
-    scoreType: "For Time",
-    timeCapMin: 12,
-    prescription:
-      "20 wall ball (20/14 lb, cíl 10/9 ft) → 18 box jump-over (24/20 in) → 30 WB → 18 BJO → 40 WB → 18 medicine-ball box step-over (24/20 in) → 66 WB → 18 MB step-over → 40 WB → 18 BJO → 30 WB → 18 BJO → 20 WB.",
-    description:
-      "Na běžícím čase dokonči celý předpis v uvedeném pořadí. Oficiální časový limit je 12 minut — skóre je čas dokončení, nebo při nedokončení počet splněných opakování dle pravidel soutěže. Počítadlo níže sčítá všechna opakování (246 wall ball + 72 box jump-over + 36 step-over = 354) jako orientační průběh; striktně drž pořadí z předpisu.",
-    segments: [{ label: "Chipper 26.1 (součet všech opakování)", reps: 354 }],
-    benchmarks: [
-      { level: "Cap", timeRange: "12:00" },
-      { level: "Strategie", timeRange: "krátké série na wall ball, kontrolované tempo na boxech" },
-      { level: "Škálování", timeRange: "váha míče, výška boxu dle Open / tvého boxu" },
-      { level: "Detail", timeRange: "kompletní předpis a diskuze na WodWell" },
-    ],
-    referenceUrl: "https://www.wodwell.com/wod/open-26-1/",
-  },
-};
-
-export const OPEN_WOD_ORDER: OpenWodKey[] = ["open_26_1"];
 
 export const LIVE_WODS: Record<LiveWodKey, LiveWodDefinition> = {
   ...CROSSFIT_WODS,

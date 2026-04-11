@@ -25,17 +25,18 @@ function toSession(row: TrainingRow): TrainingSession {
     id: row.id,
     userId: row.user_id,
     date: row.date,
-    sportType: row.sport_type,
+    /** DB / PostgREST může vracet jiné casing než enum v aplikaci → select musí dostat kanonický SportType. */
+    sportType: coerceSportType(row.sport_type),
     title: row.title,
-    durationMin: row.duration_min,
-    distanceKm: row.distance_km,
-    avgHeartRate: row.avg_heart_rate,
-    calories: row.calories,
-    elevation: row.elevation,
-    pace: row.pace,
-    effort: row.effort,
-    rpe: row.rpe,
-    notes: row.notes,
+    durationMin: Math.round(Number(row.duration_min)) || 0,
+    distanceKm: Number(row.distance_km),
+    avgHeartRate: Math.round(Number(row.avg_heart_rate)) || 0,
+    calories: Math.round(Number(row.calories)) || 0,
+    elevation: Math.round(Number(row.elevation)) || 0,
+    pace: row.pace ?? "",
+    effort: row.effort ?? "",
+    rpe: Math.round(Number(row.rpe)) || 0,
+    notes: row.notes ?? "",
   };
 }
 

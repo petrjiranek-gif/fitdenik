@@ -143,6 +143,7 @@ export function ImportsCenter() {
   const [isParsing, setIsParsing] = useState(false);
   const [deletingImportId, setDeletingImportId] = useState<string | null>(null);
   const [writingTrainingFromImportId, setWritingTrainingFromImportId] = useState<string | null>(null);
+  const [openImportDetailId, setOpenImportDetailId] = useState<string | null>(null);
   /** Po ruční změně sportu v dropdownu už OCR nepřepisuje workoutType (jinak „Walk“ z fotky přebije CrossFit). */
   const workoutTypeTouchedRef = useRef(false);
   const previewUrlRef = useRef<string | null>(null);
@@ -547,36 +548,67 @@ export function ImportsCenter() {
           U importů <span className="text-zinc-400">trénink</span> můžeš jedním klikem doplnit záznam do záložky Trénink — použijí se uložená pole z daného importu (vhodné pro starší importy před automatickým zápisem).
         </p>
         <div className="space-y-2 text-sm">
-          {savedImports.slice(0, 30).map((item) => (
-            <div
-              key={item.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-zinc-50 p-2 text-zinc-900"
-            >
-              <span className="min-w-0 flex-1 break-words">
-                {item.created_at?.slice(0, 10)} - {item.source_app} - {item.import_target} - {item.image_name}
-              </span>
-              <div className="flex shrink-0 flex-wrap items-center gap-2">
-                {item.import_target === "training" && (
-                  <button
-                    type="button"
-                    onClick={() => void onWriteTrainingFromSavedImport(item)}
-                    disabled={writingTrainingFromImportId === item.id}
-                    className="rounded border border-ew-border bg-ew-bg px-2 py-1 text-xs text-ew-blue-light hover:border-ew-blue-light disabled:opacity-50"
-                  >
-                    {writingTrainingFromImportId === item.id ? "Zapisuji…" : "Zapsat do deníku"}
-                  </button>
+          {savedImports.slice(0, 30).map((item) => {
+            const pj = item.parsed_json ?? {};
+            const coerced =
+              item.import_target === "training" ? coerceSportType(pj.workoutType) : null;
+            const rawSport = String(pj.workoutType ?? "").trim() || "—";
+            return (
+              <div
+                key={item.id}
+                className="rounded-lg border border-zinc-200 bg-zinc-50 p-2 text-zinc-900"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="break-words font-medium">
+                      {item.created_at?.slice(0, 10)} · {item.source_app} · {item.import_target}
+                    </p>
+                    <p className="break-all text-xs text-zinc-600">{item.image_name}</p>
+                    {item.import_target === "training" && (
+                      <p className="mt-1 text-xs text-zinc-700">
+                        Sport ve formě: <span className="font-medium">{rawSport}</span> → do deníku:{" "}
+                        <span className="font-medium text-ew-blue-light">{coerced}</span>
+                        {" · "}
+                        {String(pj.durationMin ?? "—")} min · {String(pj.calories ?? "—")} kcal
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setOpenImportDetailId((id) => (id === item.id ? null : item.id))}
+                      className="rounded border border-zinc-300 px-2 py-1 text-xs text-zinc-800 hover:bg-zinc-100"
+                    >
+                      {openImportDetailId === item.id ? "Skrýt" : "Detail"}
+                    </button>
+                    {item.import_target === "training" && (
+                      <button
+                        type="button"
+                        onClick={() => void onWriteTrainingFromSavedImport(item)}
+                        disabled={writingTrainingFromImportId === item.id}
+                        className="rounded border border-ew-border bg-ew-bg px-2 py-1 text-xs text-ew-blue-light hover:border-ew-blue-light disabled:opacity-50"
+                      >
+                        {writingTrainingFromImportId === item.id ? "Zapisuji…" : "Zapsat do deníku"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => void onDeleteImport(item.id)}
+                      className="rounded border border-rose-300 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50"
+                      disabled={deletingImportId === item.id}
+                    >
+                      {deletingImportId === item.id ? "Mažu..." : "Smazat"}
+                    </button>
+                  </div>
+                </div>
+                {openImportDetailId === item.id && (
+                  <pre className="mt-2 max-h-40 overflow-auto rounded border border-zinc-200 bg-white p-2 text-left text-[11px] leading-snug text-zinc-800">
+                    {JSON.stringify(pj, null, 2)}
+                  </pre>
                 )}
-                <button
-                  type="button"
-                  onClick={() => void onDeleteImport(item.id)}
-                  className="rounded border border-rose-300 px-2 py-1 text-xs text-rose-700 hover:bg-rose-50"
-                  disabled={deletingImportId === item.id}
-                >
-                  {deletingImportId === item.id ? "Mažu..." : "Smazat"}
-                </button>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>

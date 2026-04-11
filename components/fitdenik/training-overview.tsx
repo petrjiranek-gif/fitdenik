@@ -83,6 +83,13 @@ export function TrainingOverview() {
     if (!useSupabase) setSessions(repositories.training.list());
   }, [repositories, useSupabase]);
 
+  const refreshRemoteSessions = useCallback(async () => {
+    const res = await fetch("/api/training", { cache: "no-store" });
+    if (!res.ok) return;
+    const j = (await res.json()) as { sessions: TrainingSession[] };
+    setSessions(j.sessions);
+  }, []);
+
   useEffect(() => {
     if (!useSupabase) return;
     let mounted = true;
@@ -318,8 +325,7 @@ export function TrainingOverview() {
                   setSaveError(j.error ?? "Uložení se nezdařilo.");
                   return;
                 }
-                const j = (await res.json()) as { session: TrainingSession };
-                applySessionToList(j.session);
+                await refreshRemoteSessions();
               } else {
                 const updated = repositories.training.update(editing.id, patch);
                 if (updated) applySessionToList(updated);

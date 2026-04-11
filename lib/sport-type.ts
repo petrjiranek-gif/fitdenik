@@ -23,11 +23,14 @@ export function coerceSportType(raw: unknown): SportType {
   const compact = lower.replace(/\s+/g, " ");
 
   if (
-    /cross[\s-]?train|crosstrain|cross[\s-]?fit|^hiit$|funkcn|funkční|funkcni|silov|strength/i.test(
+    /cross[\s-]?train|crosstrain|cross[\s-]?fit|^hiit$|funkcn|funkční|funkcni|^cf$|emom|amrap|metcon|tabata|interval|mixed\s*cardio|funkcn[ií]\s*trénink/i.test(
       compact,
     )
   ) {
     return "CrossFit";
+  }
+  if (/(traditional\s*strength|silov[yý]\s*trénink|power\s*lift)/i.test(compact)) {
+    return "Bodybuilding";
   }
   if (/(^|[^a-z])cf($|[^a-z])|^wod$/i.test(compact)) return "CrossFit";
   if (/(nordic\s*walk|seversk)/i.test(compact)) return "Nordic walking";

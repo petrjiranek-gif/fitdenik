@@ -163,7 +163,10 @@ export function NutritionLog() {
         <h3 className="mb-3 font-semibold">Poslední dny</h3>
         <div className="space-y-2 text-sm">
           {entries.slice(0, 8).map((e) => (
-            <div key={e.id} className="flex items-center justify-between rounded-lg bg-zinc-50 p-2">
+            <div
+              key={e.id}
+              className="flex items-center justify-between rounded-lg bg-zinc-50 p-2 text-zinc-900"
+            >
               <span>{e.date}</span>
               <span>{e.calories} kcal / P {e.protein} g / S {e.carbs} g / T {e.fat} g</span>
             </div>

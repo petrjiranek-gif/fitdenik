@@ -63,7 +63,10 @@ export function ExerciseStepTracker() {
     <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
       <h3 className="mb-3 text-sm font-semibold">Angie - kroky</h3>
       {["Pull-ups", "Push-ups", "Sit-ups", "Squats"].map((step) => (
-        <div key={step} className="mb-2 flex items-center justify-between rounded-lg bg-zinc-50 p-2 text-sm">
+        <div
+          key={step}
+          className="mb-2 flex items-center justify-between rounded-lg bg-zinc-50 p-2 text-sm text-zinc-900"
+        >
           <span>{step}</span>
           <span>0/100</span>
         </div>

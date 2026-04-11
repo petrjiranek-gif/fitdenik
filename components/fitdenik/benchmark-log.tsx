@@ -144,7 +144,10 @@ export function BenchmarkLog() {
         <h3 className="mb-3 font-semibold">Historie benchmarků</h3>
         <div className="space-y-2 text-sm">
           {results.slice(0, 8).map((r) => (
-            <div key={r.id} className="flex items-center justify-between rounded-lg bg-zinc-50 p-2">
+            <div
+              key={r.id}
+              className="flex items-center justify-between rounded-lg bg-zinc-50 p-2 text-zinc-900"
+            >
               <span>{r.date} - {r.benchmarkName} ({r.resultValue})</span>
               <SourceBadge source={r.sourceType} />
             </div>

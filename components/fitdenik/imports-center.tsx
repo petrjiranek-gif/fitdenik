@@ -441,8 +441,11 @@ export function ImportsCenter() {
         <h3 className="mb-2 text-base font-semibold">Poslední importy</h3>
         <div className="space-y-2 text-sm">
           {savedImports.slice(0, 8).map((item) => (
-            <div key={item.id} className="flex items-center justify-between rounded-lg bg-zinc-50 p-2">
-              <span>
+            <div
+              key={item.id}
+              className="flex items-center justify-between rounded-lg bg-zinc-50 p-2 text-zinc-900"
+            >
+              <span className="min-w-0 break-words">
                 {item.created_at?.slice(0, 10)} - {item.source_app} - {item.import_target} - {item.image_name}
               </span>
               <button

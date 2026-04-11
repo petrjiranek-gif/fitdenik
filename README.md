@@ -2,6 +2,8 @@
 
 Moderni ceska web aplikace pro trenink, vyzivu, benchmarky a progress tracking.
 
+Produkce: [fitdenik.vercel.app](https://fitdenik.vercel.app) (repo `petrjiranek-gif/fitdenik`).
+
 ## Getting Started
 
 Spusteni lokalne:

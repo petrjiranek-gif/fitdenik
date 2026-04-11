@@ -50,6 +50,13 @@ function segmentLabel(wod: LiveWodDefinition, completed: number): string {
   return `${completed} / ${t}`;
 }
 
+/** Detail průběhu (Angie/ANDI) — pod velkým počítadlem. */
+function repProgressDetail(wod: LiveWodDefinition, completed: number): string | null {
+  if (wod.key === "angie" || wod.key === "bw_angie") return angieProgressLabel(completed);
+  if (wod.key === "andi") return andiProgressLabel(completed);
+  return null;
+}
+
 export function LiveTrainingFlow() {
   const [sport, setSport] = useState<LiveSportCategory>("crossfit");
   /** Benchmark „Girl/Hero“ vs CrossFit Open. */
@@ -446,33 +453,65 @@ export function LiveTrainingFlow() {
             <h3 id="live-session-title" className="text-lg font-semibold text-white">
               {wod.name} — živý průběh
             </h3>
-            <p className="text-xs text-ew-muted">
-              {segmentLabel(wod, completedReps)}
-              {!hideRepRemaining && ` · zbývá ${remaining}`}
-            </p>
 
-            <div className="mt-4 rounded-xl border border-ew-border bg-ew-panel p-4 text-center">
-              <p className="text-xs text-ew-muted">Čas (od startu)</p>
-              <p className="font-mono text-4xl font-bold text-white tabular-nums">{formatElapsed(elapsedMs)}</p>
-              <div className="mt-3 flex flex-wrap justify-center gap-2">
-                <button
-                  type="button"
-                  onClick={startTimer}
-                  disabled={running}
-                  className="rounded-md bg-emerald-600 px-4 py-2 text-sm text-white disabled:opacity-40"
-                >
-                  Zahájit / pokračovat v čase
-                </button>
-                <button
-                  type="button"
-                  onClick={pauseTimer}
-                  disabled={!running}
-                  className="rounded-md border border-ew-border px-4 py-2 text-sm text-zinc-200 disabled:opacity-40"
-                >
-                  Pauza
-                </button>
-              </div>
-            </div>
+            {(() => {
+              const detail = repProgressDetail(wod, completedReps);
+              const showBigFraction =
+                target > 0 && target < 9000 && !hideRepRemaining;
+              const subline =
+                detail ?? (!showBigFraction ? segmentLabel(wod, completedReps) : null);
+              return (
+                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="rounded-xl border border-ew-border bg-ew-panel p-4 text-center">
+                    <p className="text-xs text-ew-muted">Čas (od startu)</p>
+                    <p className="font-mono text-4xl font-bold text-white tabular-nums">
+                      {formatElapsed(elapsedMs)}
+                    </p>
+                    <div className="mt-3 flex flex-wrap justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={startTimer}
+                        disabled={running}
+                        className="rounded-md bg-emerald-600 px-4 py-2 text-sm text-white disabled:opacity-40"
+                      >
+                        Zahájit / pokračovat v čase
+                      </button>
+                      <button
+                        type="button"
+                        onClick={pauseTimer}
+                        disabled={!running}
+                        className="rounded-md border border-ew-border px-4 py-2 text-sm text-zinc-200 disabled:opacity-40"
+                      >
+                        Pauza
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-ew-border bg-ew-panel p-4 text-center">
+                    <p className="text-xs text-ew-muted">Počítadlo</p>
+                    {showBigFraction ? (
+                      <>
+                        <p className="font-mono text-4xl font-bold text-white tabular-nums">
+                          {completedReps}
+                          <span className="text-zinc-500"> / </span>
+                          {target}
+                        </p>
+                        {remaining > 0 && (
+                          <p className="mt-1 text-2xl font-semibold tabular-nums text-sky-400/95">
+                            zbývá {remaining}
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="font-mono text-4xl font-bold text-white tabular-nums">{completedReps}</p>
+                    )}
+                    {subline && (
+                      <p className="mt-3 text-sm leading-snug text-zinc-400">{subline}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             <div className="mt-4">
               <p className="mb-2 text-sm font-medium text-zinc-300">Přičíst opakování</p>

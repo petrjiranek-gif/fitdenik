@@ -1,18 +1,25 @@
 ---
-description: Commit a push přes npm run ship po dokončení změn v repozitáři
+description: Konec úkolu — dotaz na další kroky, návrh commit/push, potvrzení Run
 alwaysApply: true
 ---
 
-# Git — FitDenik
+# Konec úprav (jako u předchozího projektu)
 
-Po smysluplné úpravě kódu, která má skončit na GitHubu (`petrjiranek-gif/fitdenik`), v kořeni projektu spusť:
+Po **dokončení smysluplného updatu** (funkce hotová, build/lint v pořádku):
 
-```bash
-npm run ship -- "typ: krátký popis"
-```
+1. **Zeptej se**, jestli nechce uživatel ještě něco dalšího k téže věci.
+2. **Navrhni uložení na GitHub:** konkrétní **zprávu commitu** (krátká, výstižná, česky nebo anglicky podle stylu repa) a příkaz:
+   ```bash
+   cd /Users/petrjiranek/Documents/Crossfit/fitdenik && npm run ship -- "navrhovaná zpráva"
+   ```
+3. **Nespouštěj** `git commit` / `git push` / `npm run ship` sám od sebe bez odsouhlasení — uživatel v Cursoru **potvrdí Run** (nebo příkaz spustí sám).
 
-Příklad zprávy: `feat(dashboard): přehled metrik`. Bez vlastní zprávy stačí `npm run ship` (výchozí `chore: ship`).
+Pokud uživatel explicitně řekne „commitni a pushni“ / „ship“, můžeš příkaz navrhnout nebo spustit podle jeho zvyku (pořád platí potvrzení v agentním režimu).
 
-Je-li už vše zcommitované a stačí odeslat větev: `npm run push`.
+# Technická poznámka
 
-Úplně automatický commit po každém uložení souboru nepoužívej — hrozí nechtěné commity.
+- Repo: **`petrjiranek-gif/fitdenik`**, větev **`main`**.
+- `npm run ship` = `git add -A` + commit + `git push origin main` (viz `scripts/ship.sh`).
+- Jen push bez nového commitu: `npm run push`.
+
+Úplně automatický commit po každém uložení souboru nepoužívej.

@@ -1,0 +1,18 @@
+---
+description: Commit a push přes npm run ship po dokončení změn v repozitáři
+alwaysApply: true
+---
+
+# Git — FitDenik
+
+Po smysluplné úpravě kódu, která má skončit na GitHubu (`petrjiranek-gif/fitdenik`), v kořeni projektu spusť:
+
+```bash
+npm run ship -- "typ: krátký popis"
+```
+
+Příklad zprávy: `feat(dashboard): přehled metrik`. Bez vlastní zprávy stačí `npm run ship` (výchozí `chore: ship`).
+
+Je-li už vše zcommitované a stačí odeslat větev: `npm run push`.
+
+Úplně automatický commit po každém uložení souboru nepoužívej — hrozí nechtěné commity.

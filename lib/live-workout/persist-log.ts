@@ -12,6 +12,7 @@ export type LiveWorkoutLogEntry = {
   wodName: string;
   durationSec: number;
   repsCompleted: number;
+  /** U AMRAP / obecného Open bez pevného cíle může být 0 (viz živý trénink). */
   repsTarget: number;
   notes?: string;
   /** Vlastní váhy / škálování zadané při živém tréninku (CrossFit). */

@@ -24,12 +24,12 @@ function stubOpenWod(yy: OpenYearSuffix, part: 1 | 2 | 3, calendarYear: number):
     kind: "open",
     name: `Open ${yy}.${part}`,
     subtitle: `${calendarYear} CrossFit Open — Workout #${part}`,
-    scoreType: "Dle předpisu",
+    scoreType: "Dle předpisu (AMRAP / for time / váha — viz WodWell)",
     prescription:
       "Kompletní předpis, váhy, časové limity a skóre najdeš na WodWell a u oficiálních pravidel CrossFit Games. Tato karta slouží jako rozcestník a pro živý záznam.",
     description:
-      "Základní informace pro tento Open WOD. Přesný rozpis pohybů, cap a škálování je vždy na odkazu níže — použij ho jako zdroj pravdy před tréninkem.",
-    segments: [{ label: "Dle předpisu (orientační počet)", reps: 200 }],
+      "Živé počítadlo zde nesčítá k žádnému pevnému cíli rep — jen přičítáš dokončená opakování (nebo skóre zapisuješ podle typu soutěže na WodWell). Dřívější číslo 200 v aplikaci bylo jen technický placeholder, ne výkon elit.",
+    segments: [{ label: "Opakování (bez pevného stropu v aplikaci)", reps: 9999 }],
     benchmarks: [
       { level: "Zdroj pravdy", timeRange: "WodWell + games.crossfit.com" },
       { level: "Sezóna", timeRange: String(calendarYear) },
@@ -43,6 +43,28 @@ function stubOpenWod(yy: OpenYearSuffix, part: 1 | 2 | 3, calendarYear: number):
 
 /** Ručně doplněné předpisy (přepíší generickou šablonu). */
 const OPEN_WOD_OVERRIDES: Partial<Record<OpenWodKey, LiveWodDefinition>> = {
+  open_12_1: {
+    key: "open_12_1",
+    kind: "open",
+    name: "Open 12.1",
+    subtitle: "2012 CrossFit Open — Workout #1",
+    scoreType: "AMRAP (7 min)",
+    timeCapMin: 7,
+    prescription:
+      "Za 7 minut dokonči co nejvíc platných burpees (standard dle pravidel tehdejšího Open — viz WodWell).",
+    description:
+      "Skóre = počet burpees za 7 minut. Není žádný horní „cíl“ rep v aplikaci — počítadlo jen sčítá dokončené opakování. Po 7 minutách zastav časovač a ulož výsledek.",
+    segments: [{ label: "Burpees (AMRAP 7:00)", reps: 9999 }],
+    benchmarks: [
+      { level: "Formát", timeRange: "AMRAP 7:00 — max burpees" },
+      { level: "Historie", timeRange: "první Open workout (2012)" },
+      { level: "Zdroj", timeRange: "WodWell + games.crossfit.com" },
+    ],
+    referenceUrl: "https://www.wodwell.com/wod/open-12-1/",
+    liveFinishAnytime: true,
+    rxLoadDescription:
+      "Burpee dle pravidel Open (náhrudníkem na zem, vstát, skok s dotykem nad cílem)",
+  },
   open_26_1: {
     key: "open_26_1",
     kind: "open",
@@ -180,7 +202,7 @@ const OPEN_WOD_OVERRIDES: Partial<Record<OpenWodKey, LiveWodDefinition>> = {
       "Kompletní znění, váhy a standardy pohybů jsou na WodWell a games.crossfit.com — použij odkaz níže.",
     description:
       "Open 24.1 — ověř si přesný počet kol, vzdálenosti a časovač u zdroje. Počítadlo zde je pomocné.",
-    segments: [{ label: "Dle oficiálního předpisu", reps: 200 }],
+    segments: [{ label: "Opakování (bez pevného stropu v aplikaci)", reps: 9999 }],
     benchmarks: [
       { level: "Zdroj pravdy", timeRange: "WodWell + CrossFit Games" },
       { level: "Tip", timeRange: "Nejdřív si přečti celý předpis" },
@@ -197,7 +219,7 @@ const OPEN_WOD_OVERRIDES: Partial<Record<OpenWodKey, LiveWodDefinition>> = {
     scoreType: "Dle předpisu",
     prescription: "Kompletní předpis a standardy viz oficiální stránky a WodWell (odkaz).",
     description: "Druhý týden Open 2024 — struktura a časovač podle zadání sezóny.",
-    segments: [{ label: "Dle oficiálního předpisu", reps: 200 }],
+    segments: [{ label: "Opakování (bez pevného stropu v aplikaci)", reps: 9999 }],
     benchmarks: [{ level: "Zdroj pravdy", timeRange: "WodWell + CrossFit Games" }],
     referenceUrl: "https://www.wodwell.com/wod/open-24-2/",
     liveFinishAnytime: true,

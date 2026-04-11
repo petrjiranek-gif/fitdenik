@@ -41,13 +41,18 @@ function andiProgressLabel(completed: number): string {
   return `Hang power snatch (${completed}/100)`;
 }
 
+/** Součet rep v definici ≥ této hodnoty = v UI „bez stropu“ (AMRAP / obecný Open), ne reálný cíl dokončení. */
+const UNCAPPED_REPS_THRESHOLD = 9000;
+
 function segmentLabel(wod: LiveWodDefinition, completed: number): string {
   if (wod.key === "angie" || wod.key === "bw_angie") return angieProgressLabel(completed);
   if (wod.key === "andi") return andiProgressLabel(completed);
-  if (wod.liveFinishAnytime && /amrap/i.test(wod.scoreType)) {
-    return `${completed} dokončených opakování (AMRAP)`;
-  }
   const t = totalTargetReps(wod);
+  if (wod.liveFinishAnytime && (t >= UNCAPPED_REPS_THRESHOLD || /amrap/i.test(wod.scoreType))) {
+    return /amrap/i.test(wod.scoreType)
+      ? `${completed} dokončených opakování (AMRAP)`
+      : `${completed} dokončených opakování (žádný pevný cíl v aplikaci — skóre dle WodWell)`;
+  }
   return `${completed} / ${t}`;
 }
 
@@ -119,7 +124,8 @@ export function LiveTrainingFlow() {
   const target = wod ? totalTargetReps(wod) : 0;
   const remaining = Math.max(0, target - completedReps);
   const hideRepRemaining =
-    wod?.liveFinishAnytime === true && (target >= 9000 || /amrap/i.test(wod.scoreType));
+    wod?.liveFinishAnytime === true &&
+    (target >= UNCAPPED_REPS_THRESHOLD || /amrap/i.test(wod.scoreType));
   const canFinishSession = Boolean(
     wod && (wod.liveFinishAnytime || completedReps >= target),
   );
@@ -193,7 +199,7 @@ export function LiveTrainingFlow() {
       wodName: wod.name,
       durationSec,
       repsCompleted: completedReps,
-      repsTarget: target,
+      repsTarget: target >= UNCAPPED_REPS_THRESHOLD ? 0 : target,
       notes: [
         `Živý trénink — ${wod.name}. Čas ${formatElapsed(elapsedMs)}.`,
         loadTrim ? ` Použité váhy / škálování: ${loadTrim}.` : "",
@@ -526,7 +532,7 @@ export function LiveTrainingFlow() {
             {(() => {
               const detail = repProgressDetail(wod, completedReps);
               const showBigFraction =
-                target > 0 && target < 9000 && !hideRepRemaining;
+                target > 0 && target < UNCAPPED_REPS_THRESHOLD && !hideRepRemaining;
               const subline =
                 detail ?? (!showBigFraction ? segmentLabel(wod, completedReps) : null);
               return (

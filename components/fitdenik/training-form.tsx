@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { getRepositories } from "@/lib/repositories/provider";
+import { SPORT_TYPE_OPTIONS } from "@/lib/sport-type";
 import type { SportType, TrainingSession } from "@/lib/types";
 import { formInputClass } from "@/components/fitdenik/form-fields";
 
@@ -18,11 +19,6 @@ export function TrainingSessionCreateForm() {
   const [notes, setNotes] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
-
-  const sports = useMemo<SportType[]>(
-    () => ["CrossFit", "Bodybuilding", "Cycling", "Walking", "Scooter", "Skiing", "Nordic walking"],
-    [],
-  );
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -112,7 +108,7 @@ export function TrainingSessionCreateForm() {
           onChange={(e) => setSportType(e.target.value as SportType)}
           className={formInputClass}
         >
-          {sports.map((s) => (
+          {SPORT_TYPE_OPTIONS.map((s) => (
             <option key={s}>{s}</option>
           ))}
         </select>

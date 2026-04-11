@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getRepositories } from "@/lib/repositories/provider";
+import { coerceSportType, SPORT_TYPE_OPTIONS } from "@/lib/sport-type";
 import type { SportType, TrainingSession } from "@/lib/types";
 import { formInputClass } from "@/components/fitdenik/form-fields";
 
@@ -65,16 +66,6 @@ function SportPieChart({ bySport }: { bySport: { sport: string; count: number }[
     </div>
   );
 }
-
-const SPORTS: SportType[] = [
-  "CrossFit",
-  "Bodybuilding",
-  "Cycling",
-  "Walking",
-  "Scooter",
-  "Skiing",
-  "Nordic walking",
-];
 
 export function TrainingOverview() {
   const repositories = useMemo(() => getRepositories(), []);
@@ -360,7 +351,7 @@ function EditTrainingModal({
 }) {
   const [date, setDate] = useState(session.date);
   const [title, setTitle] = useState(session.title);
-  const [sportType, setSportType] = useState(session.sportType);
+  const [sportType, setSportType] = useState(() => coerceSportType(session.sportType));
   const [durationMin, setDurationMin] = useState(session.durationMin);
   const [calories, setCalories] = useState(session.calories);
   const [distanceKm, setDistanceKm] = useState(session.distanceKm);
@@ -396,7 +387,7 @@ function EditTrainingModal({
           <label className="grid gap-1 text-sm">
             <span className="text-zinc-400">Sport</span>
             <select value={sportType} onChange={(e) => setSportType(e.target.value as SportType)} className={formInputClass}>
-              {SPORTS.map((s) => (
+              {SPORT_TYPE_OPTIONS.map((s) => (
                 <option key={s}>{s}</option>
               ))}
             </select>

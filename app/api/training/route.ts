@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { coerceSportType } from "@/lib/sport-type";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { TrainingSession } from "@/lib/types";
 
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
   const insertPayload = {
     user_id: payload.userId,
     date: payload.date,
-    sport_type: payload.sportType,
+    sport_type: coerceSportType(payload.sportType),
     title: payload.title,
     duration_min: payload.durationMin,
     distance_km: payload.distanceKm,
@@ -124,7 +125,7 @@ export async function PATCH(request: Request) {
 
   const row: Record<string, string | number> = {};
   if (rest.date !== undefined) row.date = rest.date;
-  if (rest.sportType !== undefined) row.sport_type = rest.sportType;
+  if (rest.sportType !== undefined) row.sport_type = coerceSportType(rest.sportType);
   if (rest.title !== undefined) row.title = rest.title;
   if (rest.durationMin !== undefined) row.duration_min = Math.round(Number(rest.durationMin)) || 0;
   if (rest.distanceKm !== undefined) row.distance_km = Number(rest.distanceKm);

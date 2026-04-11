@@ -5,6 +5,7 @@ import Image from "next/image";
 import { createWorker, PSM } from "tesseract.js";
 import { preprocessImageForOcr } from "@/lib/ocr-preprocess";
 import { getRepositories } from "@/lib/repositories/provider";
+import { coerceSportType, SPORT_TYPE_OPTIONS } from "@/lib/sport-type";
 import type { NutritionEntry, TrainingSession } from "@/lib/types";
 
 type ImportTarget = "training" | "nutrition";
@@ -20,16 +21,6 @@ type ImportRecord = {
   parsed_json: ParsedData;
   status: "draft" | "saved" | "converted";
 };
-
-const WORKOUT_TYPE_OPTIONS: TrainingSession["sportType"][] = [
-  "CrossFit",
-  "Bodybuilding",
-  "Cycling",
-  "Walking",
-  "Scooter",
-  "Skiing",
-  "Nordic walking",
-];
 
 const trainingTemplate: ParsedData = {
   date: new Date().toISOString().slice(0, 10),
@@ -82,14 +73,6 @@ const NUTRITION_LABELS_CS: Record<string, string> = {
   notes: "Poznámka",
 };
 
-function normalizeSportType(workoutType: unknown): TrainingSession["sportType"] {
-  const s = String(workoutType ?? "").trim();
-  if (WORKOUT_TYPE_OPTIONS.includes(s as TrainingSession["sportType"])) {
-    return s as TrainingSession["sportType"];
-  }
-  return "Walking";
-}
-
 /** Číslo z pole (včetně desetinné čárky); nikdy NaN. */
 function parseLocaleNumber(value: unknown): number {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -128,11 +111,11 @@ function parseDurationToMinutes(value: unknown): number {
 }
 
 function buildTrainingFieldsFromParsed(parsedData: ParsedData): Omit<TrainingSession, "id" | "userId"> {
-  const titleLabel = String(parsedData.workoutType ?? "").trim() || "Import";
+  const sport = coerceSportType(parsedData.workoutType);
   return {
     date: String(parsedData.date ?? new Date().toISOString().slice(0, 10)),
-    sportType: normalizeSportType(parsedData.workoutType),
-    title: `${titleLabel} (import)`,
+    sportType: sport,
+    title: `${sport} (import)`,
     durationMin: parseDurationToMinutes(parsedData.durationMin),
     distanceKm: Math.max(0, Math.round(parseLocaleNumber(parsedData.distanceKm) * 100) / 100),
     avgHeartRate: Math.max(0, Math.round(parseLocaleNumber(parsedData.averageHeartRate))),
@@ -160,6 +143,8 @@ export function ImportsCenter() {
   const [isParsing, setIsParsing] = useState(false);
   const [deletingImportId, setDeletingImportId] = useState<string | null>(null);
   const [writingTrainingFromImportId, setWritingTrainingFromImportId] = useState<string | null>(null);
+  /** Po ruční změně sportu v dropdownu už OCR nepřepisuje workoutType (jinak „Walk“ z fotky přebije CrossFit). */
+  const workoutTypeTouchedRef = useRef(false);
   const previewUrlRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -204,7 +189,14 @@ export function ImportsCenter() {
         } = await worker.recognize(fileForOcr);
         await worker.terminate();
         const parsed = parseTextToFields(text, importTarget);
-        setParsedData((prev) => ({ ...prev, ...parsed }));
+        setParsedData((prev) => {
+          const { workoutType: inferredWt, ...rest } = parsed;
+          const next: ParsedData = { ...prev, ...rest };
+          if (!workoutTypeTouchedRef.current && inferredWt !== undefined) {
+            next.workoutType = inferredWt;
+          }
+          return next;
+        });
         setMessage("Automatické načtení ze screenshotu dokončeno. Zkontroluj hodnoty.");
         void fileUrl;
       } catch {
@@ -226,6 +218,7 @@ export function ImportsCenter() {
       const fileForImport =
         file.name === displayName ? file : new File([file], displayName, { type: file.type || "image/png" });
       setImageName(fileForImport.name);
+      workoutTypeTouchedRef.current = false;
       const nextUrl = URL.createObjectURL(fileForImport);
       setPreviewUrl((prev) => {
         if (prev) URL.revokeObjectURL(prev);
@@ -272,6 +265,11 @@ export function ImportsCenter() {
   };
 
   const onParsedValueChange = (key: string, value: string) => {
+    if (key === "workoutType") {
+      workoutTypeTouchedRef.current = true;
+      setParsedData((prev) => ({ ...prev, workoutType: coerceSportType(value) }));
+      return;
+    }
     const numeric = Number(value);
     setParsedData((prev) => ({
       ...prev,
@@ -444,6 +442,7 @@ export function ImportsCenter() {
               value={importTarget}
               onChange={(e) => {
                 const nextTarget = e.target.value as ImportTarget;
+                workoutTypeTouchedRef.current = false;
                 setImportTarget(nextTarget);
                 setParsedData(nextTarget === "training" ? trainingTemplate : nutritionTemplate);
               }}
@@ -496,11 +495,11 @@ export function ImportsCenter() {
               </span>
               {key === "workoutType" ? (
                 <select
-                  value={String(value)}
+                  value={coerceSportType(value)}
                   onChange={(e) => onParsedValueChange(key, e.target.value)}
                   className="rounded-md border border-zinc-300 px-3 py-2"
                 >
-                  {WORKOUT_TYPE_OPTIONS.map((option) => (
+                  {SPORT_TYPE_OPTIONS.map((option) => (
                     <option key={option} value={option}>
                       {option}
                     </option>
@@ -916,13 +915,15 @@ function extractPace(input: string): string | null {
 }
 
 function inferWorkoutType(input: string): TrainingSession["sportType"] {
-  if (/(cross\s*training|crosstraining|cross-training|crossfit)/.test(input)) return "CrossFit";
-  if (/(walk|ch[uů]ze|walking|proch[aá]zka|nordic)/.test(input)) return "Walking";
-  if (/(run|b[eě]h|jog)/.test(input)) return "Walking";
-  if (/(cycle|bike|cyklo|cyklist|kolo|j[ií]zda)/.test(input)) return "Cycling";
-  if (/(scooter|kolob[eě][zž]k)/.test(input)) return "Scooter";
-  if (/(ski|ly[zž])/.test(input)) return "Skiing";
-  return "CrossFit";
+  const n = input.toLowerCase();
+  if (/(cross\s*training|crosstraining|cross-training|crossfit)/.test(n)) return "CrossFit";
+  if (/(nordic\s*walk|seversk)/.test(n)) return "Nordic walking";
+  if (/(walk|ch[uů]ze|walking|proch[aá]zka)/.test(n)) return "Walking";
+  if (/(run|b[eě]h|jog)/.test(n)) return "Walking";
+  if (/(cycle|bike|cyklo|cyklist|kolo|j[ií]zda)/.test(n)) return "Cycling";
+  if (/(scooter|kolob[eě][zž]k)/.test(n)) return "Scooter";
+  if (/(ski|ly[zž])/.test(n)) return "Skiing";
+  return coerceSportType(input);
 }
 
 function extractDistanceKm(

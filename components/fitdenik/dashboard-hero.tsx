@@ -1,5 +1,5 @@
-/** Logo v `public/` — URL s mezerami. Průhledný podklad: PNG/WebP (ne JPG). */
-const EWATTUP_LOGO = `/eWattUp%20-%20transparent.jpg`;
+/** Logo v `public/eWattUp - blue.jpg` — varianta pro tmavé UI (URL s mezerami). */
+const EWATTUP_LOGO = `/eWattUp%20-%20blue.jpg`;
 
 export function DashboardHero() {
   return (

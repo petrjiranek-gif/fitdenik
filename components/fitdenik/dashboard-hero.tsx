@@ -5,7 +5,7 @@ export function DashboardHero() {
   return (
     <div className="flex flex-col gap-3 rounded-2xl border border-ew-border bg-gradient-to-br from-ew-panel to-ew-bg px-4 py-5 shadow-sm md:flex-row md:items-center md:justify-between md:gap-6">
       <div className="flex items-center gap-3 md:gap-4">
-        <div className="flex h-[2.25rem] w-[5.5rem] shrink-0 items-center justify-center md:h-[2.5rem] md:w-[6.25rem]">
+        <div className="flex h-11 w-[7rem] shrink-0 items-center justify-center md:h-12 md:w-[8rem]">
           <img
             src={EWATTUP_LOGO}
             alt="eWattUp"

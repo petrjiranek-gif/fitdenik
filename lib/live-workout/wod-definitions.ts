@@ -3,14 +3,21 @@
  * Inspirace rozložením jako na WodWell — texty vlastní / zkrácené.
  */
 
-export type CrossFitGirlKey = "annie" | "angie" | "karen" | "kalsu" | "murph";
+export type CrossFitGirlKey = "annie" | "andi" | "angie" | "karen" | "kalsu" | "murph";
+
+/** CrossFit Open (jednotlivé ročníky / části). */
+export type OpenWodKey = "open_26_1";
+
+export type LiveWodKey = CrossFitGirlKey | OpenWodKey;
 
 export type WodBenchmarkRow = { level: string; timeRange: string };
 
 export type WodSegment = { label: string; reps: number };
 
-export type CrossFitWodDefinition = {
-  key: CrossFitGirlKey;
+export type LiveWodDefinition = {
+  key: LiveWodKey;
+  /** Benchmark „Girl/Hero“ vs CrossFit Open. */
+  kind: "benchmark" | "open";
   /** Zobrazovaný název */
   name: string;
   subtitle: string;
@@ -21,18 +28,24 @@ export type CrossFitWodDefinition = {
   segments: WodSegment[];
   benchmarks: WodBenchmarkRow[];
   referenceUrl: string;
+  /** U Open WOD často oficiální cap (minuty). */
+  timeCapMin?: number;
 };
 
-export const CROSSFIT_WODS: Record<CrossFitGirlKey, CrossFitWodDefinition> = {
+/** @deprecated použij LiveWodDefinition */
+export type CrossFitWodDefinition = LiveWodDefinition;
+
+export const CROSSFIT_WODS: Record<CrossFitGirlKey, LiveWodDefinition> = {
   annie: {
     key: "annie",
+    kind: "benchmark",
     name: "Annie",
     subtitle: 'CrossFit „Girl" benchmark WOD',
     scoreType: "For Time",
-    prescription: "50-40-30-20-10 Double-Unders a sit-upů (stejný počet obou v každé rundě).",
+    prescription: "50-40-30-20-10 double-underů a sit-upů (v každé rundě stejný počet obou).",
     description:
-      "Na běžícím čase dokonči všechny opakování. Mezi rundami můžeš odpočívat. Výsledek je celkový čas.",
-    segments: [{ label: "Double-Unders + sit-upy (součet všech opakování)", reps: 300 }],
+      "Na běžícím čase dokonči všechna opakování. Mezi rundami můžeš odpočívat. Skóre je celkový čas.",
+    segments: [{ label: "Double-under + sit-up (součet všech opakování)", reps: 300 }],
     benchmarks: [
       { level: "Beginner", timeRange: "cca 15–25 min" },
       { level: "Intermediate", timeRange: "cca 10–15 min" },
@@ -41,8 +54,33 @@ export const CROSSFIT_WODS: Record<CrossFitGirlKey, CrossFitWodDefinition> = {
     ],
     referenceUrl: "https://www.wodwell.com/wod/annie/",
   },
+  andi: {
+    key: "andi",
+    kind: "benchmark",
+    name: "ANDI",
+    subtitle: 'CrossFit „Girl" benchmark WOD',
+    scoreType: "For Time",
+    prescription:
+      "100 hang power snatchů, 100 push pressů, 100 sumo deadlift high pullů, 100 front squatů (65/45 lb) — v tomto pořadí.",
+    description:
+      "Na běžícím čase dokonči všechna opakování v uvedeném pořadí co nejrychleji. Skóre je čas dokončení všech 400 opakování.",
+    segments: [
+      { label: "Hang power snatch", reps: 100 },
+      { label: "Push press", reps: 100 },
+      { label: "Sumo deadlift high pull", reps: 100 },
+      { label: "Front squat", reps: 100 },
+    ],
+    benchmarks: [
+      { level: "Beginner", timeRange: "cca 30–45 min" },
+      { level: "Intermediate", timeRange: "cca 22–30 min" },
+      { level: "Advanced", timeRange: "cca 18–22 min" },
+      { level: "Elite", timeRange: "pod 18 min" },
+    ],
+    referenceUrl: "https://www.wodwell.com/wod/andi/",
+  },
   angie: {
     key: "angie",
+    kind: "benchmark",
     name: "Angie",
     subtitle: 'CrossFit „Girl" benchmark WOD',
     scoreType: "For Time",
@@ -65,6 +103,7 @@ export const CROSSFIT_WODS: Record<CrossFitGirlKey, CrossFitWodDefinition> = {
   },
   karen: {
     key: "karen",
+    kind: "benchmark",
     name: "Karen",
     subtitle: 'CrossFit „Girl" benchmark WOD',
     scoreType: "For Time",
@@ -82,6 +121,7 @@ export const CROSSFIT_WODS: Record<CrossFitGirlKey, CrossFitWodDefinition> = {
   },
   kalsu: {
     key: "kalsu",
+    kind: "benchmark",
     name: "Kalsu",
     subtitle: "Hero WOD",
     scoreType: "For Time",
@@ -97,6 +137,7 @@ export const CROSSFIT_WODS: Record<CrossFitGirlKey, CrossFitWodDefinition> = {
   },
   murph: {
     key: "murph",
+    kind: "benchmark",
     name: "Murph",
     subtitle: "Hero WOD (Lt. Michael P. Murphy)",
     scoreType: "For Time",
@@ -115,8 +156,39 @@ export const CROSSFIT_WODS: Record<CrossFitGirlKey, CrossFitWodDefinition> = {
   },
 };
 
-export const CROSSFIT_WOD_ORDER: CrossFitGirlKey[] = ["annie", "angie", "karen", "kalsu", "murph"];
+/** CrossFit Open — aktuálně jeden předpis; další ročníky lze doplnit stejně. */
+export const OPEN_WODS: Record<OpenWodKey, LiveWodDefinition> = {
+  open_26_1: {
+    key: "open_26_1",
+    kind: "open",
+    name: "Open 26.1",
+    subtitle: "2026 CrossFit Open — Workout #1",
+    scoreType: "For Time",
+    timeCapMin: 12,
+    prescription:
+      "20 wall ball (20/14 lb, cíl 10/9 ft) → 18 box jump-over (24/20 in) → 30 WB → 18 BJO → 40 WB → 18 medicine-ball box step-over (24/20 in) → 66 WB → 18 MB step-over → 40 WB → 18 BJO → 30 WB → 18 BJO → 20 WB.",
+    description:
+      "Na běžícím čase dokonči celý předpis v uvedeném pořadí. Oficiální časový limit je 12 minut — skóre je čas dokončení, nebo při nedokončení počet splněných opakování dle pravidel soutěže. Počítadlo níže sčítá všechna opakování (246 wall ball + 72 box jump-over + 36 step-over = 354) jako orientační průběh; striktně drž pořadí z předpisu.",
+    segments: [{ label: "Chipper 26.1 (součet všech opakování)", reps: 354 }],
+    benchmarks: [
+      { level: "Cap", timeRange: "12:00" },
+      { level: "Strategie", timeRange: "krátké série na wall ball, kontrolované tempo na boxech" },
+      { level: "Škálování", timeRange: "váha míče, výška boxu dle Open / tvého boxu" },
+      { level: "Detail", timeRange: "kompletní předpis a diskuze na WodWell" },
+    ],
+    referenceUrl: "https://www.wodwell.com/wod/open-26-1/",
+  },
+};
 
-export function totalTargetReps(w: CrossFitWodDefinition): number {
+export const OPEN_WOD_ORDER: OpenWodKey[] = ["open_26_1"];
+
+export const LIVE_WODS: Record<LiveWodKey, LiveWodDefinition> = {
+  ...CROSSFIT_WODS,
+  ...OPEN_WODS,
+};
+
+export const CROSSFIT_WOD_ORDER: CrossFitGirlKey[] = ["annie", "andi", "angie", "karen", "kalsu", "murph"];
+
+export function totalTargetReps(w: LiveWodDefinition): number {
   return w.segments.reduce((sum, s) => sum + s.reps, 0);
 }

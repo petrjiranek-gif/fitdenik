@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CROSSFIT_WOD_ORDER,
-  CROSSFIT_WODS,
-  type CrossFitGirlKey,
-  type CrossFitWodDefinition,
+  LIVE_WODS,
+  OPEN_WOD_ORDER,
+  type LiveWodDefinition,
+  type LiveWodKey,
   totalTargetReps,
 } from "@/lib/live-workout/wod-definitions";
 import { saveLiveWorkoutLog } from "@/lib/live-workout/persist-log";
@@ -27,15 +28,26 @@ function angieProgressLabel(completed: number): string {
   return `Pull-upy (${completed}/100)`;
 }
 
-function segmentLabel(wod: CrossFitWodDefinition, completed: number): string {
+function andiProgressLabel(completed: number): string {
+  if (completed >= 400) return "Hotovo";
+  if (completed >= 300) return `Front squat (${completed - 300}/100)`;
+  if (completed >= 200) return `Sumo DL HP (${completed - 200}/100)`;
+  if (completed >= 100) return `Push press (${completed - 100}/100)`;
+  return `Hang power snatch (${completed}/100)`;
+}
+
+function segmentLabel(wod: LiveWodDefinition, completed: number): string {
   if (wod.key === "angie") return angieProgressLabel(completed);
+  if (wod.key === "andi") return andiProgressLabel(completed);
   const t = totalTargetReps(wod);
   return `${completed} / ${t}`;
 }
 
 export function LiveTrainingFlow() {
   const [sport, setSport] = useState<LiveSportCategory>("crossfit");
-  const [wodKey, setWodKey] = useState<CrossFitGirlKey | null>(null);
+  /** Benchmark „Girl/Hero“ vs CrossFit Open. */
+  const [cfKind, setCfKind] = useState<"benchmark" | "open">("benchmark");
+  const [wodKey, setWodKey] = useState<LiveWodKey | null>(null);
   const [prescriptionOpen, setPrescriptionOpen] = useState(false);
   const [activeOpen, setActiveOpen] = useState(false);
   const [completedReps, setCompletedReps] = useState(0);
@@ -45,7 +57,7 @@ export function LiveTrainingFlow() {
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  const wod = wodKey ? CROSSFIT_WODS[wodKey] : null;
+  const wod = wodKey ? LIVE_WODS[wodKey] : null;
   const target = wod ? totalTargetReps(wod) : 0;
   const remaining = Math.max(0, target - completedReps);
 
@@ -132,7 +144,7 @@ export function LiveTrainingFlow() {
   const sportOptions = useMemo(
     () =>
       [
-        { id: "crossfit" as const, label: "CrossFit", hint: "Benchmark WOD" },
+        { id: "crossfit" as const, label: "CrossFit", hint: "Benchmark nebo Open" },
         { id: "bodybuilding" as const, label: "Bodybuilding", hint: "brzy: série a váhy" },
         { id: "bodyweight" as const, label: "Bodyweight", hint: "brzy: kliky, shyby…" },
       ] as const,
@@ -151,6 +163,7 @@ export function LiveTrainingFlow() {
               type="button"
               onClick={() => {
                 setSport(o.id);
+                setCfKind("benchmark");
                 setWodKey(null);
                 resetSession();
               }}
@@ -169,13 +182,45 @@ export function LiveTrainingFlow() {
 
       {sport === "crossfit" && (
         <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
-          <h3 className="text-base font-semibold text-zinc-100">2. Benchmark WOD</h3>
+          <h3 className="text-base font-semibold text-zinc-100">2. CrossFit — výběr WOD</h3>
           <p className="mb-3 text-xs text-ew-muted">
-            Vyber WOD — předpis a časy (Beginner / Intermediate / …) odpovídají veřejným popisům (např. WodWell).
+            Benchmarky (Girl/Hero) nebo závodní předpis Open. Předpis a orientační info jako na WodWell.
           </p>
+          <div className="mb-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setCfKind("benchmark");
+                setWodKey(null);
+                setActiveOpen(false);
+              }}
+              className={`rounded-lg border px-3 py-2 text-sm ${
+                cfKind === "benchmark"
+                  ? "border-ew-blue-light bg-ew-bg text-white"
+                  : "border-ew-border text-zinc-400 hover:border-zinc-500"
+              }`}
+            >
+              Benchmark
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setCfKind("open");
+                setWodKey(null);
+                setActiveOpen(false);
+              }}
+              className={`rounded-lg border px-3 py-2 text-sm ${
+                cfKind === "open"
+                  ? "border-ew-blue-light bg-ew-bg text-white"
+                  : "border-ew-border text-zinc-400 hover:border-zinc-500"
+              }`}
+            >
+              Open
+            </button>
+          </div>
           <div className="flex flex-wrap gap-2">
-            {CROSSFIT_WOD_ORDER.map((key) => {
-              const def = CROSSFIT_WODS[key];
+            {(cfKind === "benchmark" ? CROSSFIT_WOD_ORDER : OPEN_WOD_ORDER).map((key) => {
+              const def = LIVE_WODS[key];
               return (
                 <button
                   key={key}
@@ -236,7 +281,13 @@ export function LiveTrainingFlow() {
             </h3>
             <p className="text-xs uppercase tracking-wide text-ew-muted">{wod.subtitle}</p>
             <p className="mt-2 text-sm text-zinc-400">
-              <span className="font-medium text-zinc-300">{wod.scoreType}</span> · {wod.prescription}
+              <span className="font-medium text-zinc-300">{wod.scoreType}</span>
+              {wod.timeCapMin != null && (
+                <span className="ml-2 rounded bg-amber-500/15 px-2 py-0.5 text-amber-200/90">
+                  cap {wod.timeCapMin} min
+                </span>
+              )}{" "}
+              · {wod.prescription}
             </p>
             <p className="mt-3 text-sm text-zinc-300">{wod.description}</p>
             <div className="mt-4">

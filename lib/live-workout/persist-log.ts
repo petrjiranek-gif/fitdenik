@@ -1,4 +1,4 @@
-import type { CrossFitGirlKey } from "@/lib/live-workout/wod-definitions";
+import type { LiveWodKey } from "@/lib/live-workout/wod-definitions";
 import type { LiveSportCategory } from "@/lib/types";
 
 const STORAGE_KEY = "fitdenik.liveWorkoutLogs.v1";
@@ -8,7 +8,7 @@ export type LiveWorkoutLogEntry = {
   userId: string;
   createdAt: string;
   sportCategory: LiveSportCategory;
-  wodKey?: CrossFitGirlKey;
+  wodKey?: LiveWodKey;
   wodName: string;
   durationSec: number;
   repsCompleted: number;

@@ -1,15 +1,11 @@
 import { createBaselineDefaults } from "@/lib/baseline-defaults";
-import { benchmarkResults, nutritionEntries, trainingSessions } from "@/lib/mock-data";
 import type { BenchmarkResult, NutritionEntry, TrainingSession } from "@/lib/types";
 import type { AppRepositories, BaselineInput } from "@/lib/repositories/contracts";
 
-function notImplemented(action: string): never {
-  throw new Error(
-    `Supabase adapter: "${action}" zatím není implementováno. ` +
-      "Doplň Supabase klienta a SQL mapování v lib/repositories/supabase-adapter.ts.",
-  );
-}
-
+/**
+ * Repositář pro režim Supabase: čtení/zápis probíhá přes `/api/*` v komponentách.
+ * Tento objekt slouží jako bezpečný fallback (prázdné listy, baseline null).
+ */
 function getBaselineDefaults(): BaselineInput {
   return createBaselineDefaults();
 }
@@ -20,57 +16,48 @@ export const supabaseRepositories: AppRepositories = {
       return getBaselineDefaults();
     },
     get() {
-      // TODO: read baseline from Supabase profile/baseline table.
       return null;
     },
-    save(input) {
-      void input;
-      notImplemented("baseline.save");
+    save() {
+      /* zápis přes PUT /api/baseline */
     },
   },
   training: {
     list() {
-      // TODO: read training sessions from Supabase.
-      return trainingSessions as TrainingSession[];
+      return [] as TrainingSession[];
     },
-    create(input) {
-      void input;
-      notImplemented("training.create");
+    create() {
+      throw new Error("Tréninky přes POST /api/training.");
     },
     update() {
-      notImplemented("training.update");
+      throw new Error("Tréninky přes PATCH /api/training.");
     },
     delete() {
-      notImplemented("training.delete");
+      throw new Error("Tréninky přes DELETE /api/training.");
     },
   },
   nutrition: {
     list() {
-      // TODO: read nutrition entries from Supabase.
-      return nutritionEntries as NutritionEntry[];
+      return [] as NutritionEntry[];
     },
-    create(input) {
-      void input;
-      notImplemented("nutrition.create");
+    create() {
+      throw new Error("Výživa přes POST /api/nutrition.");
     },
   },
   benchmarks: {
     list() {
-      // TODO: read benchmark results from Supabase.
-      return benchmarkResults as BenchmarkResult[];
+      return [] as BenchmarkResult[];
     },
-    create(input) {
-      void input;
-      notImplemented("benchmarks.create");
+    create() {
+      throw new Error("Benchmarky přes POST /api/benchmarks.");
     },
   },
   bodyMeasurements: {
     list() {
       return [];
     },
-    create(input) {
-      void input;
-      notImplemented("bodyMeasurements.create");
+    create() {
+      throw new Error("Měření přes POST /api/body-measurements.");
     },
   },
 };

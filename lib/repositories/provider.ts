@@ -14,15 +14,7 @@ export function getRepositories(): AppRepositories {
     return localStorageRepositories;
   }
 
-  // Phase 1 hybrid mode: live Supabase wiring is currently enabled
-  // only for training flow; other domains keep local fallback.
-  return {
-    baseline: localStorageRepositories.baseline,
-    training: supabaseRepositories.training,
-    nutrition: localStorageRepositories.nutrition,
-    benchmarks: localStorageRepositories.benchmarks,
-    bodyMeasurements: localStorageRepositories.bodyMeasurements,
-  };
+  return supabaseRepositories;
 }
 
 export function getDashboardSummaryFromProvider() {

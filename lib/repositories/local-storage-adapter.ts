@@ -5,6 +5,7 @@ import {
   trainingSessions,
 } from "@/lib/mock-data";
 import type { BenchmarkResult, BodyMeasurementEntry, NutritionEntry, TrainingSession } from "@/lib/types";
+import { getFitdenikUserId } from "@/lib/fitdenik-user-id";
 import type {
   AppRepositories,
   BaselineInput,
@@ -42,7 +43,7 @@ const trainingRepo: TrainingRepository = {
     return readStorage<TrainingSession>(TRAINING_STORAGE_KEY) ?? trainingSessions;
   },
   create(input) {
-    const next: TrainingSession = { id: crypto.randomUUID(), userId: "u1", ...input };
+    const next: TrainingSession = { id: crypto.randomUUID(), userId: getFitdenikUserId(), ...input };
     writeStorage(TRAINING_STORAGE_KEY, [next, ...this.list()]);
     return next;
   },
@@ -70,7 +71,7 @@ const nutritionRepo: NutritionRepository = {
     return readStorage<NutritionEntry>(NUTRITION_STORAGE_KEY) ?? nutritionEntries;
   },
   create(input) {
-    const next: NutritionEntry = { id: crypto.randomUUID(), userId: "u1", ...input };
+    const next: NutritionEntry = { id: crypto.randomUUID(), userId: getFitdenikUserId(), ...input };
     writeStorage(NUTRITION_STORAGE_KEY, [next, ...this.list()]);
     return next;
   },
@@ -81,7 +82,7 @@ const benchmarkRepo: BenchmarkRepository = {
     return readStorage<BenchmarkResult>(BENCHMARK_STORAGE_KEY) ?? benchmarkResults;
   },
   create(input) {
-    const next: BenchmarkResult = { id: crypto.randomUUID(), userId: "u1", ...input };
+    const next: BenchmarkResult = { id: crypto.randomUUID(), userId: getFitdenikUserId(), ...input };
     writeStorage(BENCHMARK_STORAGE_KEY, [next, ...this.list()]);
     return next;
   },
@@ -92,7 +93,7 @@ const bodyMeasurementsRepo: BodyMeasurementRepository = {
     return readStorage<BodyMeasurementEntry>(BODY_MEASUREMENTS_KEY) ?? [];
   },
   create(input: BodyMeasurementInput) {
-    const next: BodyMeasurementEntry = { id: crypto.randomUUID(), userId: "u1", ...input };
+    const next: BodyMeasurementEntry = { id: crypto.randomUUID(), userId: getFitdenikUserId(), ...input };
     writeStorage(BODY_MEASUREMENTS_KEY, [next, ...this.list()]);
     return next;
   },

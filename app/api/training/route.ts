@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getFitdenikUserId } from "@/lib/fitdenik-user-id";
 import { coerceSportType } from "@/lib/sport-type";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { TrainingSession } from "@/lib/types";
@@ -52,6 +53,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("training_sessions")
     .select("*")
+    .eq("user_id", getFitdenikUserId())
     .order("date", { ascending: false })
     .limit(200);
 
@@ -78,7 +80,7 @@ export async function POST(request: Request) {
   const payload = (await request.json()) as Omit<TrainingSession, "id">;
 
   const insertPayload = {
-    user_id: payload.userId,
+    user_id: getFitdenikUserId(),
     date: payload.date,
     sport_type: coerceSportType(payload.sportType),
     title: payload.title,
@@ -148,6 +150,7 @@ export async function PATCH(request: Request) {
     .from("training_sessions")
     .update(row)
     .eq("id", id)
+    .eq("user_id", getFitdenikUserId())
     .select("*");
 
   if (updateError) {
@@ -163,6 +166,7 @@ export async function PATCH(request: Request) {
       .from("training_sessions")
       .select("*")
       .eq("id", id)
+      .eq("user_id", getFitdenikUserId())
       .maybeSingle();
 
     if (fetchError) {
@@ -210,6 +214,7 @@ export async function DELETE(request: Request) {
     .from("training_sessions")
     .delete()
     .eq("id", id)
+    .eq("user_id", getFitdenikUserId())
     .select("id");
 
   if (error) {

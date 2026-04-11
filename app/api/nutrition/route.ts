@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getFitdenikUserId } from "@/lib/fitdenik-user-id";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { NutritionEntry } from "@/lib/types";
 
@@ -44,6 +45,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("nutrition_entries")
     .select("*")
+    .eq("user_id", getFitdenikUserId())
     .order("date", { ascending: false })
     .limit(60);
 
@@ -70,7 +72,7 @@ export async function POST(request: Request) {
   const payload = (await request.json()) as Omit<NutritionEntry, "id">;
 
   const insertPayload = {
-    user_id: payload.userId,
+    user_id: getFitdenikUserId(),
     date: payload.date,
     calories: payload.calories,
     protein: payload.protein,

@@ -6,6 +6,7 @@ import {
   getRepositories,
 } from "@/lib/repositories/provider";
 import type { DashboardSummaryResponse } from "@/app/api/dashboard-summary/route";
+import type { BaselineInput } from "@/lib/repositories/contracts";
 import type { BodyMeasurementEntry, NutritionEntry } from "@/lib/types";
 import { WeightSparkline } from "@/components/fitdenik/weight-sparkline";
 
@@ -91,13 +92,35 @@ function StatusPill({
 export function DashboardOverviewCards() {
   const repositories = useMemo(() => getRepositories(), []);
   const useSupabase = process.env.NEXT_PUBLIC_FITDENIK_REPOSITORY === "supabase";
-  const baseline = useMemo(
-    () => repositories.baseline.get() ?? repositories.baseline.getDefaults(),
-    [repositories],
-  );
+  const [remoteBaseline, setRemoteBaseline] = useState<BaselineInput | null>(null);
+  const [remoteMeasurements, setRemoteMeasurements] = useState<BodyMeasurementEntry[] | null>(null);
+  const [remoteNutrition, setRemoteNutrition] = useState<NutritionEntry[] | null>(null);
+
+  const baseline = useMemo(() => {
+    if (useSupabase) {
+      return remoteBaseline ?? repositories.baseline.getDefaults();
+    }
+    return repositories.baseline.get() ?? repositories.baseline.getDefaults();
+  }, [useSupabase, remoteBaseline, repositories]);
+
   const fallbackSummary = useMemo(() => getDashboardSummaryFromProvider(), []);
   const [remote, setRemote] = useState<DashboardSummaryResponse | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!useSupabase) return;
+    void Promise.all([
+      fetch("/api/baseline").then((r) => r.json()),
+      fetch("/api/body-measurements").then((r) => r.json()),
+      fetch("/api/nutrition").then((r) => r.json()),
+    ])
+      .then(([b, m, n]) => {
+        setRemoteBaseline((b as { baseline: BaselineInput }).baseline);
+        setRemoteMeasurements((m as { entries: BodyMeasurementEntry[] }).entries);
+        setRemoteNutrition((n as { entries: NutritionEntry[] }).entries);
+      })
+      .catch(() => {});
+  }, [useSupabase]);
 
   useEffect(() => {
     if (!useSupabase) return;
@@ -174,8 +197,15 @@ export function DashboardOverviewCards() {
     };
   }, [repositories, useSupabase]);
 
-  const measurementList = useMemo(() => repositories.bodyMeasurements.list(), [repositories]);
-  const nutritionList = useMemo(() => repositories.nutrition.list(), [repositories]);
+  const measurementList = useMemo(() => {
+    if (useSupabase) return remoteMeasurements ?? [];
+    return repositories.bodyMeasurements.list();
+  }, [useSupabase, remoteMeasurements, repositories]);
+
+  const nutritionList = useMemo(() => {
+    if (useSupabase) return remoteNutrition ?? [];
+    return repositories.nutrition.list();
+  }, [useSupabase, remoteNutrition, repositories]);
 
   const summary: DashboardSummaryResponse = useSupabase
     ? remote ?? {
@@ -286,8 +316,9 @@ export function DashboardOverviewCards() {
         <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
           <WeightSparkline entries={measurementEntriesForChart} />
           <p className="mt-2 text-xs text-ew-muted">
-            Graf z lokálních záznamů „Nové měření“ (prohlížeč). Karta „Váha vs. baseline“ výše bere nejnovější hodnotu z měření,
-            výživy nebo serveru — podle data a času.
+            {useSupabase
+              ? "Graf z měření v Supabase (stejná data na všech zařízeních). Karta „Váha vs. baseline“ bere nejnovější váhu z měření, výživy nebo souhrnu serveru."
+              : "Graf z lokálních záznamů „Nové měření“ (prohlížeč). Karta „Váha vs. baseline“ výše bere nejnovější hodnotu z měření, výživy nebo serveru — podle data a času."}
           </p>
         </div>
       </section>

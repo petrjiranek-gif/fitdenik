@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { getFitdenikUserId } from "@/lib/fitdenik-user-id";
 import { getRepositories } from "@/lib/repositories/provider";
 import type { NutritionEntry } from "@/lib/types";
 
@@ -38,7 +39,7 @@ export function NutritionLog() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const input: Omit<NutritionEntry, "id"> = {
-      userId: "u1",
+      userId: getFitdenikUserId(),
       date: new Date().toISOString().slice(0, 10),
       calories,
       protein,

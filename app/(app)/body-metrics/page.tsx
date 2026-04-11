@@ -1,14 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getRepositories } from "@/lib/repositories/provider";
+import type { BodyMeasurementEntry } from "@/lib/types";
 
 export default function BodyMetricsPage() {
   const repositories = useMemo(() => getRepositories(), []);
-  const rows = useMemo(() => {
-    return [...repositories.bodyMeasurements.list()].sort((a, b) => b.measuredAt.localeCompare(a.measuredAt));
-  }, [repositories]);
+  const useSupabase = process.env.NEXT_PUBLIC_FITDENIK_REPOSITORY === "supabase";
+  const [rows, setRows] = useState<BodyMeasurementEntry[]>(() =>
+    useSupabase ? [] : [...repositories.bodyMeasurements.list()].sort((a, b) => b.measuredAt.localeCompare(a.measuredAt)),
+  );
+
+  useEffect(() => {
+    if (!useSupabase) return;
+    void fetch("/api/body-measurements")
+      .then(async (response) => {
+        if (!response.ok) return;
+        const result = (await response.json()) as { entries: BodyMeasurementEntry[] };
+        setRows([...result.entries].sort((a, b) => b.measuredAt.localeCompare(a.measuredAt)));
+      })
+      .catch(() => {});
+  }, [useSupabase]);
 
   return (
     <div className="space-y-4">
@@ -16,7 +29,9 @@ export default function BodyMetricsPage() {
         <div>
           <h1 className="text-xl font-semibold text-zinc-100">Tělesná data</h1>
           <p className="mt-1 max-w-2xl text-sm text-zinc-400">
-            Historie měření váhy a obvodů. Nový záznam přidáš přes <strong className="font-medium text-zinc-300">Nové měření</strong> v horní liště.
+            Historie měření váhy a obvodů. Nový záznam přidáš přes{" "}
+            <strong className="font-medium text-zinc-300">Nové měření</strong> v horní liště.
+            {useSupabase && " Data jsou v Supabase — stejná na všech zařízeních a doménách."}
           </p>
         </div>
         <Link

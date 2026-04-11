@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createBaselineDefaults } from "@/lib/baseline-defaults";
 import { getRepositories } from "@/lib/repositories/provider";
 import type { BodyMeasurementInput } from "@/lib/repositories/contracts";
 import { createEmptyMeasurementInput } from "@/lib/measurement-defaults";
@@ -13,10 +14,21 @@ import type { BaselineInput } from "@/lib/repositories/contracts";
 export function MeasurementForm() {
   const router = useRouter();
   const repositories = useMemo(() => getRepositories(), []);
-  const baseline = useMemo(
-    () => repositories.baseline.get() ?? repositories.baseline.getDefaults(),
-    [repositories],
+  const useSupabase = process.env.NEXT_PUBLIC_FITDENIK_REPOSITORY === "supabase";
+  const [baseline, setBaseline] = useState<BaselineInput>(() =>
+    useSupabase ? createBaselineDefaults() : (repositories.baseline.get() ?? repositories.baseline.getDefaults()),
   );
+
+  useEffect(() => {
+    if (!useSupabase) return;
+    void fetch("/api/baseline")
+      .then(async (response) => {
+        if (!response.ok) return;
+        const result = (await response.json()) as { baseline: BaselineInput };
+        setBaseline(result.baseline);
+      })
+      .catch(() => {});
+  }, [useSupabase]);
 
   const initial = useMemo(() => createEmptyMeasurementInput(new Date().toISOString()), []);
   const [form, setForm] = useState<BodyMeasurementInput>(initial);
@@ -54,21 +66,37 @@ export function MeasurementForm() {
     calfCm: form.calfCm,
   };
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (form.weightKg <= 0) {
       setError("Zadej váhu v kg (větší než 0).");
       return;
     }
-    try {
-      repositories.bodyMeasurements.create({
-        ...form,
-        measuredAt: form.measuredAt,
+    if (useSupabase) {
+      const response = await fetch("/api/body-measurements", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          measuredAt: form.measuredAt,
+        }),
       });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Uložení se nezdařilo.");
-      return;
+      if (!response.ok) {
+        const result = (await response.json()) as { error?: string };
+        setError(result.error ?? "Uložení se nezdařilo.");
+        return;
+      }
+    } else {
+      try {
+        repositories.bodyMeasurements.create({
+          ...form,
+          measuredAt: form.measuredAt,
+        });
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Uložení se nezdařilo.");
+        return;
+      }
     }
     setSaved(true);
     window.setTimeout(() => {
@@ -77,7 +105,7 @@ export function MeasurementForm() {
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={(e) => void onSubmit(e)} className="space-y-6">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,300px)] lg:items-start">
         <div className="space-y-6">
           <section className="rounded-xl border border-ew-border bg-ew-panel p-4">

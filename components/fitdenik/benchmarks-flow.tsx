@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getFitdenikUserId } from "@/lib/fitdenik-user-id";
 import { getRepositories } from "@/lib/repositories/provider";
 import {
   filterBenchmarks,
@@ -98,7 +99,7 @@ export function BenchmarksFlow() {
     }
 
     const input: Omit<BenchmarkResult, "id"> = {
-      userId: "u1",
+      userId: getFitdenikUserId(),
       date,
       benchmarkName: activeEntry.name,
       resultType,

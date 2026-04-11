@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getFitdenikUserId } from "@/lib/fitdenik-user-id";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export type DashboardSummaryResponse = {
@@ -38,6 +39,7 @@ export async function GET() {
   from.setDate(today.getDate() - 7);
   const fromDate = from.toISOString().slice(0, 10);
   const todayStr = calendarTodayPrague();
+  const uid = getFitdenikUserId();
 
   const [
     trainingResult,
@@ -52,30 +54,39 @@ export async function GET() {
     supabase
       .from("training_sessions")
       .select("duration_min, calories")
+      .eq("user_id", uid)
       .gte("date", fromDate),
-    supabase.from("nutrition_entries").select("protein").gte("date", fromDate),
+    supabase
+      .from("nutrition_entries")
+      .select("protein")
+      .eq("user_id", uid)
+      .gte("date", fromDate),
     supabase
       .from("benchmark_results")
       .select("benchmark_name, result_value, date")
+      .eq("user_id", uid)
       .order("date", { ascending: false })
       .limit(1),
     supabase
       .from("nutrition_entries")
       .select("body_weight_kg, date")
+      .eq("user_id", uid)
       .gt("body_weight_kg", 0)
       .order("date", { ascending: false })
       .limit(1),
-    supabase.from("training_sessions").select("id").eq("date", todayStr).limit(1),
-    supabase.from("nutrition_entries").select("id").eq("date", todayStr).limit(1),
+    supabase.from("training_sessions").select("id").eq("user_id", uid).eq("date", todayStr).limit(1),
+    supabase.from("nutrition_entries").select("id").eq("user_id", uid).eq("date", todayStr).limit(1),
     supabase
       .from("nutrition_entries")
       .select("id")
+      .eq("user_id", uid)
       .eq("date", todayStr)
       .gt("body_weight_kg", 0)
       .limit(1),
     supabase
       .from("training_sessions")
       .select("date, title, sport_type, duration_min")
+      .eq("user_id", uid)
       .order("date", { ascending: false })
       .limit(8),
   ]);

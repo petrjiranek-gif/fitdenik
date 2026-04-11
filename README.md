@@ -2,7 +2,11 @@
 
 Moderni ceska web aplikace pro trenink, vyzivu, benchmarky a progress tracking.
 
-Produkce: [fitdenik.vercel.app](https://fitdenik.vercel.app) (repo `petrjiranek-gif/fitdenik`).
+Produkce: [fitdenik.ewattup.com](https://fitdenik.ewattup.com) — alias `fitdenik.vercel.app` přesměruje na kanonickou doménu (middleware). Repo: `petrjiranek-gif/fitdenik`.
+
+Na Vercelu nastav `NEXT_PUBLIC_APP_URL=https://fitdenik.ewattup.com` (Production). Volitelně `NEXT_PUBLIC_VERCEL_PROJECT_HOST=fitdenik.vercel.app` pokud by se změnil slug projektu.
+
+Přenos dat mezi doménami (stejný build, jiný `localStorage`): stránka **Importy** → sekce záloha JSON (export na staré adrese, import na `fitdenik.ewattup.com`).
 
 ## Getting Started
 
@@ -14,19 +18,23 @@ npm run dev
 
 Otevri [http://localhost:3000](http://localhost:3000).
 
-## Repository provider (prep switch)
-
-Adapter se prepina jednim env:
+## Repository provider
 
 ```bash
-# default (kdyz neni nastaveno)
+# výchozí — data jen v prohlížeči (localStorage), jiné na každé doméně
 NEXT_PUBLIC_FITDENIK_REPOSITORY=localStorage
 
-# priprava na budouci napojeni
+# produkce — tréninky, výživa, benchmarky, baseline, měření těla přes Supabase (stejné všude)
 NEXT_PUBLIC_FITDENIK_REPOSITORY=supabase
 ```
 
-Poznamka: `supabase` adapter je zatim skeleton (`lib/repositories/supabase-adapter.ts`) a write operace zatim hazeji informativni chybu.
+Volitelně jednotný „uživatel“ pro řádky v DB (výchozí `u1`):
+
+```bash
+NEXT_PUBLIC_FITDENIK_USER_ID=u1
+```
+
+Nové tabulky pro baseline a měření těla: spusť SQL ze souboru `supabase/migrations/001_baseline_body_measurements.sql` v Supabase SQL Editoru (po tabulkách z training/nutrition/benchmark výše).
 
 ## Supabase minimal setup (training API)
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { getFitdenikUserId } from "@/lib/fitdenik-user-id";
 import { getRepositories } from "@/lib/repositories/provider";
 import { SPORT_TYPE_OPTIONS } from "@/lib/sport-type";
 import type { SportType, TrainingSession } from "@/lib/types";
@@ -25,7 +26,7 @@ export function TrainingSessionCreateForm() {
     setSaving(true);
     setErrorMessage(null);
     const input: Omit<TrainingSession, "id"> = {
-      userId: "u1",
+      userId: getFitdenikUserId(),
       date: trainingDate,
       sportType,
       title: title || "Nový trénink",

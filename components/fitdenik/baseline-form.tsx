@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { createBaselineDefaults } from "@/lib/baseline-defaults";
 import { getRepositories } from "@/lib/repositories/provider";
 import type { BaselineInput } from "@/lib/repositories/contracts";
 import { BaselineSilhouette } from "@/components/fitdenik/baseline-silhouette";
@@ -8,12 +9,30 @@ import { bmiFromHeightWeight, DecimalField, formInputClass, NumField } from "@/c
 
 export function BaselineForm() {
   const repositories = useMemo(() => getRepositories(), []);
-  const initial = useMemo(
-    () => repositories.baseline.get() ?? repositories.baseline.getDefaults(),
-    [repositories],
+  const useSupabase = process.env.NEXT_PUBLIC_FITDENIK_REPOSITORY === "supabase";
+  const [form, setForm] = useState<BaselineInput>(() =>
+    useSupabase
+      ? createBaselineDefaults()
+      : (repositories.baseline.get() ?? repositories.baseline.getDefaults()),
   );
-  const [form, setForm] = useState<BaselineInput>(initial);
   const [saved, setSaved] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!useSupabase) return;
+    void fetch("/api/baseline")
+      .then(async (response) => {
+        if (!response.ok) {
+          const result = (await response.json()) as { error?: string };
+          setLoadError(result.error ?? "Nepodařilo se načíst baseline ze serveru.");
+          return;
+        }
+        const result = (await response.json()) as { baseline: BaselineInput };
+        setForm(result.baseline);
+        setLoadError(null);
+      })
+      .catch(() => setLoadError("Nepodařilo se načíst baseline ze serveru."));
+  }, [useSupabase]);
 
   const computedBmi = bmiFromHeightWeight(form.baselineWeightKg, form.heightCm);
 
@@ -25,15 +44,32 @@ export function BaselineForm() {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const onSubmit = (e: React.FormEvent) => {
+  const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    repositories.baseline.save(form);
+    if (useSupabase) {
+      const response = await fetch("/api/baseline", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      if (!response.ok) {
+        const result = (await response.json()) as { error?: string };
+        setLoadError(result.error ?? "Uložení baseline selhalo.");
+        return;
+      }
+      setLoadError(null);
+    } else {
+      repositories.baseline.save(form);
+    }
     setSaved(true);
     window.setTimeout(() => setSaved(false), 4000);
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={(e) => void onSubmit(e)} className="space-y-6">
+      {loadError && (
+        <div className="rounded-lg border border-rose-500/40 bg-rose-950/40 p-3 text-sm text-rose-200">{loadError}</div>
+      )}
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(260px,300px)] lg:items-start">
         <div className="space-y-6">
           <section className="rounded-xl border border-ew-border bg-ew-panel p-4">

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getFitdenikUserId } from "@/lib/fitdenik-user-id";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import type { BenchmarkResult, SourceType } from "@/lib/types";
 
@@ -41,6 +42,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from("benchmark_results")
     .select("*")
+    .eq("user_id", getFitdenikUserId())
     .order("date", { ascending: false })
     .limit(100);
 
@@ -64,7 +66,7 @@ export async function POST(request: Request) {
   const payload = (await request.json()) as Omit<BenchmarkResult, "id">;
 
   const insertPayload = {
-    user_id: payload.userId,
+    user_id: getFitdenikUserId(),
     date: payload.date,
     benchmark_name: payload.benchmarkName,
     result_type: payload.resultType,

@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 export function Header() {
   const pathname = usePathname();
-  const hideQuickActions = pathname === "/dashboard";
+  const hideQuickActions = pathname === "/dashboard" || pathname === "/progress";
   const hideImportLink = pathname === "/baseline";
 
   return (

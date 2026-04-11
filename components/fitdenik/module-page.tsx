@@ -191,6 +191,8 @@ export function ModulePage({
   description,
   showCharts = true,
   showFilters = true,
+  /** Sport / metrika / tlačítka — vypni na Pokroku (jen grafy a časové období). */
+  showFilterPanel = true,
   showTable = true,
   showDrilldown = true,
 }: {
@@ -198,18 +200,23 @@ export function ModulePage({
   description: string;
   showCharts?: boolean;
   showFilters?: boolean;
+  showFilterPanel?: boolean;
   showTable?: boolean;
   showDrilldown?: boolean;
 }) {
   const [range, setRange] = useState<(typeof TIME_RANGES)[number]>("Týden");
   const [sportFilter, setSportFilter] = useState("vše");
   const [metricFilter, setMetricFilter] = useState("vše");
-  const hasActiveFilters = range !== "Týden" || sportFilter !== "vše" || metricFilter !== "vše";
+  const hasActiveFilters = showFilterPanel
+    ? range !== "Týden" || sportFilter !== "vše" || metricFilter !== "vše"
+    : range !== "Týden";
 
   const clearFilters = () => {
     setRange("Týden");
-    setSportFilter("vše");
-    setMetricFilter("vše");
+    if (showFilterPanel) {
+      setSportFilter("vše");
+      setMetricFilter("vše");
+    }
   };
 
   return (
@@ -221,38 +228,61 @@ export function ModulePage({
       {showFilters && (
         <>
           <TimeRangeTabs selected={range} onChange={setRange} />
-          <FilterPanel
-            sport={sportFilter}
-            metric={metricFilter}
-            onSportChange={setSportFilter}
-            onMetricChange={setMetricFilter}
-          />
-          {hasActiveFilters ? (
-            <div className="flex items-center justify-between rounded-lg bg-ew-panel px-3 py-2 text-xs text-zinc-300 ring-1 ring-ew-border">
-              <div className="flex flex-wrap items-center gap-2">
-                <span>Aktivní filtry:</span>
-                {range !== "Týden" && (
-                  <span className="rounded bg-ew-bg px-2 py-1 text-zinc-200">období: {range}</span>
-                )}
-                {sportFilter !== "vše" && (
-                  <span className="rounded bg-ew-bg px-2 py-1 text-zinc-200">sport: {sportFilter}</span>
-                )}
-                {metricFilter !== "vše" && (
-                  <span className="rounded bg-ew-bg px-2 py-1 text-zinc-200">metrika: {metricFilter}</span>
-                )}
-              </div>
-              <button
-                onClick={clearFilters}
-                className="rounded border border-ew-border bg-ew-bg px-2 py-1 text-xs text-zinc-200"
-              >
-                Vyčistit filtry
-              </button>
-            </div>
-          ) : (
-            <div className="rounded-lg bg-ew-panel px-3 py-2 text-xs text-ew-muted ring-1 ring-ew-border">
-              Zobrazen výchozí filtr: tento týden.
-            </div>
+          {showFilterPanel && (
+            <>
+              <FilterPanel
+                sport={sportFilter}
+                metric={metricFilter}
+                onSportChange={setSportFilter}
+                onMetricChange={setMetricFilter}
+              />
+              {hasActiveFilters ? (
+                <div className="flex items-center justify-between rounded-lg bg-ew-panel px-3 py-2 text-xs text-zinc-300 ring-1 ring-ew-border">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span>Aktivní filtry:</span>
+                    {range !== "Týden" && (
+                      <span className="rounded bg-ew-bg px-2 py-1 text-zinc-200">období: {range}</span>
+                    )}
+                    {sportFilter !== "vše" && (
+                      <span className="rounded bg-ew-bg px-2 py-1 text-zinc-200">sport: {sportFilter}</span>
+                    )}
+                    {metricFilter !== "vše" && (
+                      <span className="rounded bg-ew-bg px-2 py-1 text-zinc-200">metrika: {metricFilter}</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={clearFilters}
+                    className="rounded border border-ew-border bg-ew-bg px-2 py-1 text-xs text-zinc-200"
+                  >
+                    Vyčistit filtry
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-lg bg-ew-panel px-3 py-2 text-xs text-ew-muted ring-1 ring-ew-border">
+                  Zobrazen výchozí filtr: tento týden.
+                </div>
+              )}
+            </>
           )}
+          {!showFilterPanel &&
+            (range !== "Týden" ? (
+              <div className="flex items-center justify-between rounded-lg bg-ew-panel px-3 py-2 text-xs text-zinc-300 ring-1 ring-ew-border">
+                <span>
+                  Období: <span className="text-zinc-200">{range}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="rounded border border-ew-border bg-ew-bg px-2 py-1 text-xs text-zinc-200"
+                >
+                  Týden
+                </button>
+              </div>
+            ) : (
+              <div className="rounded-lg bg-ew-panel px-3 py-2 text-xs text-ew-muted ring-1 ring-ew-border">
+                Vyber časové období pro osy grafů níže.
+              </div>
+            ))}
         </>
       )}
       {showCharts && (

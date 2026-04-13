@@ -13,10 +13,10 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-10 border-b border-ew-border bg-ew-panel/95 px-4 py-3 backdrop-blur">
-      <div className="flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-white">FitDenik MVP</h1>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-base font-semibold text-white sm:text-lg">FitDenik MVP</h1>
         {!hideQuickActions && (
-          <div className="flex gap-2">
+          <div className="flex w-full flex-wrap gap-2 sm:w-auto sm:justify-end">
             <Link
               href="/measurements/new"
               className="rounded-md bg-ew-blue px-3 py-2 text-sm text-white hover:bg-ew-blue-dark"

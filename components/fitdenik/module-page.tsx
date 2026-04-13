@@ -37,12 +37,12 @@ export function TimeRangeTabs({
   onChange: (value: (typeof TIME_RANGES)[number]) => void;
 }) {
   return (
-    <div className="inline-flex rounded-lg border border-ew-border bg-ew-panel p-1">
+    <div className="inline-flex max-w-full overflow-x-auto rounded-lg border border-ew-border bg-ew-panel p-1">
       {TIME_RANGES.map((label) => (
         <button
           key={label}
           onClick={() => onChange(label)}
-          className={`rounded-md px-3 py-1 text-sm ${
+          className={`shrink-0 rounded-md px-3 py-1 text-sm ${
             selected === label
               ? "bg-ew-blue text-white"
               : "text-zinc-400 hover:bg-ew-border hover:text-white"
@@ -154,26 +154,28 @@ export function DataTable({
   return (
     <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
       <h3 className="mb-3 text-sm font-semibold text-white">{title}</h3>
-      <table className="w-full text-sm text-zinc-300">
-        <thead className="text-left text-ew-muted">
-          <tr>
-            <th>Datum</th>
-            <th>Název</th>
-            <th>Sport</th>
-            <th>Výsledek</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.id} className="border-t border-ew-border">
-              <td>{row.date}</td>
-              <td>{row.title}</td>
-              <td>{row.sportType}</td>
-              <td>{row.durationMin} min</td>
+      <div className="overflow-x-auto">
+        <table className="min-w-[560px] text-sm text-zinc-300">
+          <thead className="text-left text-ew-muted">
+            <tr>
+              <th>Datum</th>
+              <th>Název</th>
+              <th>Sport</th>
+              <th>Výsledek</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.id} className="border-t border-ew-border">
+                <td>{row.date}</td>
+                <td>{row.title}</td>
+                <td>{row.sportType}</td>
+                <td>{row.durationMin} min</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -237,7 +239,7 @@ export function ModulePage({
                 onMetricChange={setMetricFilter}
               />
               {hasActiveFilters ? (
-                <div className="flex items-center justify-between rounded-lg bg-ew-panel px-3 py-2 text-xs text-zinc-300 ring-1 ring-ew-border">
+                <div className="flex flex-col gap-2 rounded-lg bg-ew-panel px-3 py-2 text-xs text-zinc-300 ring-1 ring-ew-border sm:flex-row sm:items-center sm:justify-between">
                   <div className="flex flex-wrap items-center gap-2">
                     <span>Aktivní filtry:</span>
                     {range !== "Týden" && (
@@ -266,7 +268,7 @@ export function ModulePage({
           )}
           {!showFilterPanel &&
             (range !== "Týden" ? (
-              <div className="flex items-center justify-between rounded-lg bg-ew-panel px-3 py-2 text-xs text-zinc-300 ring-1 ring-ew-border">
+              <div className="flex flex-col gap-2 rounded-lg bg-ew-panel px-3 py-2 text-xs text-zinc-300 ring-1 ring-ew-border sm:flex-row sm:items-center sm:justify-between">
                 <span>
                   Období: <span className="text-zinc-200">{range}</span>
                 </span>

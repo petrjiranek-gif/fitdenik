@@ -61,6 +61,23 @@ const NUTRITION_FIELD_ORDER = [
   "notes",
 ] as const;
 
+/**
+ * iOS z galerie často vrátí prázdný typ nebo HEIC — striktní `image/*` by soubor odmítlo.
+ */
+function isLikelyImageFile(file: File): boolean {
+  const t = (file.type || "").toLowerCase();
+  if (t.startsWith("image/")) return true;
+  if (/\.(png|jpe?g|gif|webp|heic|heif|bmp|dng)$/i.test(file.name)) return true;
+  if (
+    (t === "" || t === "application/octet-stream") &&
+    file.size > 0 &&
+    file.size < 80 * 1024 * 1024
+  ) {
+    return true;
+  }
+  return false;
+}
+
 const NUTRITION_LABELS_CS: Record<string, string> = {
   date: "Datum",
   calories: "Kalorie (kcal)",
@@ -147,6 +164,7 @@ export function ImportsCenter() {
   /** Po ruční změně sportu v dropdownu už OCR nepřepisuje workoutType (jinak „Walk“ z fotky přebije CrossFit). */
   const workoutTypeTouchedRef = useRef(false);
   const previewUrlRef = useRef<string | null>(null);
+  const screenshotFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     previewUrlRef.current = previewUrl;
@@ -211,7 +229,10 @@ export function ImportsCenter() {
 
   const runImportFromFile = useCallback(
     (file: File) => {
-      if (!file.type.startsWith("image/")) return;
+      if (!isLikelyImageFile(file)) {
+        setErrorMessage("Vyber prosím obrázek (PNG, JPEG, HEIC, …).");
+        return;
+      }
       const displayName =
         file.name && file.name.length > 0 && file.name !== "blob"
           ? file.name
@@ -237,12 +258,11 @@ export function ImportsCenter() {
       if (!items?.length) return;
       for (let i = 0; i < items.length; i++) {
         const item = items[i];
-        if (item.kind === "file" && item.type.startsWith("image/")) {
-          const file = item.getAsFile();
-          if (file) {
-            e.preventDefault();
-            runImportFromFile(file);
-          }
+        if (item.kind !== "file") continue;
+        const file = item.getAsFile();
+        if (file && isLikelyImageFile(file)) {
+          e.preventDefault();
+          runImportFromFile(file);
           return;
         }
       }
@@ -263,6 +283,9 @@ export function ImportsCenter() {
   const onFileChange = (file: File | null) => {
     if (!file) return;
     runImportFromFile(file);
+    if (screenshotFileInputRef.current) {
+      screenshotFileInputRef.current.value = "";
+    }
   };
 
   const onParsedValueChange = (key: string, value: string) => {
@@ -425,8 +448,9 @@ export function ImportsCenter() {
       <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
         <h3 className="text-base font-semibold">Import screenshotu</h3>
         <p className="text-xs text-zinc-500">
-          Vhodné pro dnešní 2 fitness screenshoty i 1 screenshot kalorické tabulky. Screenshot z schránky vlož
-          přímo sem (Ctrl+V / Cmd+V) — nemusíš ho ukládat jako soubor; nebo použij „Vybrat soubor“.
+          Vhodné pro fitness screenshoty nebo snímek kalorické tabulky. Na počítači můžeš vložit ze schránky
+          (Ctrl+V / Cmd+V). Na iPhonu použij tlačítko „Vybrat fotku“ (Safari někdy nevyplní typ souboru — to je
+          opravené), nebo zkopíruj obrázek v Fotkách a vlož ho dlouhým stiskem do stránky.
         </p>
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <label className="grid gap-1 text-sm">
@@ -453,10 +477,28 @@ export function ImportsCenter() {
               <option value="nutrition">Výživa</option>
             </select>
           </label>
-          <label className="grid gap-1 text-sm">
-            <span className="text-zinc-600">Soubor</span>
-            <input type="file" accept="image/*" onChange={(e) => onFileChange(e.target.files?.[0] ?? null)} className="rounded-md border border-zinc-300 px-3 py-2" />
-          </label>
+          <div className="grid gap-1 text-sm">
+            <span className="text-zinc-400">Soubor</span>
+            <input
+              ref={screenshotFileInputRef}
+              id="imports-screenshot-file"
+              type="file"
+              accept="image/*,.heic,.heif"
+              className="sr-only"
+              onChange={(e) => onFileChange(e.target.files?.[0] ?? null)}
+            />
+            <label
+              htmlFor="imports-screenshot-file"
+              className="flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-ew-border bg-ew-bg px-4 py-2 text-center text-sm font-medium text-zinc-200 hover:border-ew-blue-light"
+            >
+              Vybrat fotku / screenshot
+            </label>
+            {imageName ? (
+              <span className="truncate text-xs text-zinc-500" title={imageName}>
+                {imageName}
+              </span>
+            ) : null}
+          </div>
         </div>
         {previewUrl && (
           <div className="mt-3">

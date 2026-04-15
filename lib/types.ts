@@ -15,7 +15,7 @@ export type SportType =
   | "Nordic walking";
 
 /** Živý trénink — kategorie (CrossFit má výběr benchmark WOD). */
-export type LiveSportCategory = "crossfit" | "bodybuilding" | "bodyweight";
+export type LiveSportCategory = "crossfit" | "bodybuilding" | "bodyweight" | "hyrox";
 
 export interface UserProfile {
   id: string;

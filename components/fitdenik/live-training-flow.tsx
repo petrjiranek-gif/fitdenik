@@ -59,6 +59,105 @@ const FREE_WORKOUT_WOD: LiveWodDefinition = {
   rxLoadDescription: "Doplň používané váhy a zapiš je po sériích níže.",
 };
 
+type HyroxStepDef = {
+  name: string;
+  target: string;
+  defaultReps: number;
+  kind: "reps" | "distance" | "time";
+};
+
+type HyroxVariantDef = {
+  key: "home_light" | "home_medium" | "home_killer" | "indoor_low_impact";
+  name: string;
+  rounds: number;
+  goalTime: string;
+  kcalRange: string;
+  summary: string;
+  defaults: { farmerCarry: string; wallBall: string; deadlift: string; shinFriendly: boolean };
+  steps: HyroxStepDef[];
+};
+
+const HYROX_VARIANTS: Record<HyroxVariantDef["key"], HyroxVariantDef> = {
+  home_light: {
+    key: "home_light",
+    name: "HYROX HOME LIGHT",
+    rounds: 4,
+    goalTime: "25–35 min",
+    kcalRange: "450–700 kcal",
+    summary: "Kontrolovaný vstup, technika a pacing.",
+    defaults: { farmerCarry: "2 × 15–17.5 kg", wallBall: "6 kg", deadlift: "40–50 kg", shinFriendly: true },
+    steps: [
+      { name: "Svižná chůze", target: "400 m", defaultReps: 400, kind: "distance" },
+      { name: "TRX rows", target: "15 reps", defaultReps: 15, kind: "reps" },
+      { name: "Push-ups", target: "10 reps", defaultReps: 10, kind: "reps" },
+      { name: "Farmer carry", target: "40 m", defaultReps: 40, kind: "distance" },
+      { name: "Wall balls", target: "12 reps", defaultReps: 12, kind: "reps" },
+      { name: "Deadlift", target: "10 reps", defaultReps: 10, kind: "reps" },
+      { name: "Burpees", target: "6 reps", defaultReps: 6, kind: "reps" },
+    ],
+  },
+  home_medium: {
+    key: "home_medium",
+    name: "HYROX HOME MEDIUM",
+    rounds: 5,
+    goalTime: "30–42 min",
+    kcalRange: "550–850 kcal",
+    summary: "Hlavní pracovní varianta s nejlepším poměrem výkon/udržitelnost.",
+    defaults: { farmerCarry: "2 × 20 kg", wallBall: "6 kg", deadlift: "50–60 kg", shinFriendly: true },
+    steps: [
+      { name: "Svižná chůze", target: "500 m", defaultReps: 500, kind: "distance" },
+      { name: "TRX rows", target: "20 reps", defaultReps: 20, kind: "reps" },
+      { name: "Push-ups", target: "12 reps", defaultReps: 12, kind: "reps" },
+      { name: "Farmer carry", target: "40–50 m", defaultReps: 50, kind: "distance" },
+      { name: "Wall balls", target: "15 reps", defaultReps: 15, kind: "reps" },
+      { name: "Deadlift", target: "12 reps", defaultReps: 12, kind: "reps" },
+      { name: "Burpees", target: "10 reps", defaultReps: 10, kind: "reps" },
+    ],
+  },
+  home_killer: {
+    key: "home_killer",
+    name: "HYROX HOME KILLER",
+    rounds: 6,
+    goalTime: "35–50 min",
+    kcalRange: "650–950 kcal",
+    summary: "Velký burner se závodním feelingem.",
+    defaults: { farmerCarry: "2 × 20–22.5 kg", wallBall: "6 kg", deadlift: "50–60 kg", shinFriendly: false },
+    steps: [
+      { name: "Rychlá chůze", target: "500 m", defaultReps: 500, kind: "distance" },
+      { name: "TRX rows", target: "20 reps", defaultReps: 20, kind: "reps" },
+      { name: "Push-ups", target: "20 reps", defaultReps: 20, kind: "reps" },
+      { name: "Farmer carry", target: "50–60 m", defaultReps: 60, kind: "distance" },
+      { name: "Wall balls", target: "15 reps", defaultReps: 15, kind: "reps" },
+      { name: "Deadlift", target: "15 reps", defaultReps: 15, kind: "reps" },
+      { name: "Burpees", target: "10 reps", defaultReps: 10, kind: "reps" },
+    ],
+  },
+  indoor_low_impact: {
+    key: "indoor_low_impact",
+    name: "HYROX INDOOR LOW IMPACT",
+    rounds: 5,
+    goalTime: "30–42 min",
+    kcalRange: "500–780 kcal",
+    summary: "Šetrnější varianta bez skoků pro citlivé holeně.",
+    defaults: { farmerCarry: "2 × 20 kg", wallBall: "6 kg", deadlift: "50–60 kg", shinFriendly: true },
+    steps: [
+      { name: "Step-ups", target: "40 reps", defaultReps: 40, kind: "reps" },
+      { name: "TRX rows", target: "20 reps", defaultReps: 20, kind: "reps" },
+      { name: "Push-ups", target: "12 reps", defaultReps: 12, kind: "reps" },
+      { name: "Farmer carry", target: "40 kroků", defaultReps: 40, kind: "distance" },
+      { name: "Wall balls", target: "15 reps", defaultReps: 15, kind: "reps" },
+      { name: "Deadlift", target: "12 reps", defaultReps: 12, kind: "reps" },
+      { name: "Burpees", target: "8 reps", defaultReps: 8, kind: "reps" },
+    ],
+  },
+};
+
+function parseNaturalNumber(value: string): number {
+  const n = Number(value.replace(",", "."));
+  if (!Number.isFinite(n)) return 0;
+  return Math.max(0, Math.round(n));
+}
+
 function segmentLabel(wod: LiveWodDefinition, completed: number): string {
   if (wod.key === "angie" || wod.key === "bw_angie") return angieProgressLabel(completed);
   if (wod.key === "andi") return andiProgressLabel(completed);
@@ -126,6 +225,7 @@ export function LiveTrainingFlow() {
   const [openYear, setOpenYear] = useState<OpenSeasonYear>(OPEN_SEASON_YEAR_ORDER[0]);
   const [wodKey, setWodKey] = useState<LiveWodKey | null>(null);
   const [freeWorkoutMode, setFreeWorkoutMode] = useState(false);
+  const [hyroxVariantKey, setHyroxVariantKey] = useState<HyroxVariantDef["key"] | null>(null);
   const [prescriptionOpen, setPrescriptionOpen] = useState(false);
   const [activeOpen, setActiveOpen] = useState(false);
   const [completedReps, setCompletedReps] = useState(0);
@@ -139,16 +239,35 @@ export function LiveTrainingFlow() {
   const [freeWorkoutSets, setFreeWorkoutSets] = useState<Array<{ reps: string; weight: string }>>(
     () => Array.from({ length: 10 }, () => ({ reps: "", weight: "" })),
   );
+  const [hyroxCurrentRound, setHyroxCurrentRound] = useState(1);
+  const [hyroxCurrentStep, setHyroxCurrentStep] = useState(0);
+  const [hyroxStepActual, setHyroxStepActual] = useState("");
+  const [hyroxStepLoad, setHyroxStepLoad] = useState("");
+  const [hyroxLog, setHyroxLog] = useState<Array<{ round: number; step: string; target: string; actual: string; load: string }>>([]);
+  const [hyroxSetup, setHyroxSetup] = useState({
+    bodyWeightKg: "",
+    heightCm: "",
+    farmerCarry: "",
+    wallBall: "",
+    deadlift: "",
+    shinSensitive: false,
+  });
 
   const selectedWod = wodKey ? LIVE_WODS[wodKey] : null;
   const wod = freeWorkoutMode ? FREE_WORKOUT_WOD : selectedWod;
+  const hyroxVariant = hyroxVariantKey ? HYROX_VARIANTS[hyroxVariantKey] : null;
+  const hyroxTotalSteps = hyroxVariant ? hyroxVariant.rounds * hyroxVariant.steps.length : 0;
+  const hyroxDoneSteps = hyroxLog.length;
+  const sessionName = hyroxVariant ? hyroxVariant.name : wod?.name;
   const target = wod ? totalTargetReps(wod) : 0;
   const remaining = Math.max(0, target - completedReps);
   const hideRepRemaining =
     wod?.liveFinishAnytime === true &&
     (target >= UNCAPPED_REPS_THRESHOLD || /amrap/i.test(wod.scoreType));
   const canFinishSession = Boolean(
-    wod && (wod.liveFinishAnytime || target === 0 || completedReps >= target),
+    hyroxVariant
+      ? hyroxDoneSteps > 0
+      : wod && (wod.liveFinishAnytime || target === 0 || completedReps >= target),
   );
 
   useEffect(() => {
@@ -163,7 +282,22 @@ export function LiveTrainingFlow() {
     setUserLoadInput("");
     setBearRoundWeights(Array.from({ length: 5 }, () => ""));
     setFreeWorkoutSets(Array.from({ length: 10 }, () => ({ reps: "", weight: "" })));
-  }, [wodKey, sport]);
+    if (hyroxVariant) {
+      setHyroxSetup({
+        bodyWeightKg: "",
+        heightCm: "",
+        farmerCarry: hyroxVariant.defaults.farmerCarry,
+        wallBall: hyroxVariant.defaults.wallBall,
+        deadlift: hyroxVariant.defaults.deadlift,
+        shinSensitive: hyroxVariant.defaults.shinFriendly,
+      });
+      setHyroxCurrentRound(1);
+      setHyroxCurrentStep(0);
+      setHyroxStepActual("");
+      setHyroxStepLoad("");
+      setHyroxLog([]);
+    }
+  }, [wodKey, sport, hyroxVariantKey, hyroxVariant]);
 
   useEffect(() => {
     if (!running) return;
@@ -195,6 +329,11 @@ export function LiveTrainingFlow() {
     setUserLoadInput("");
     setBearRoundWeights(Array.from({ length: 5 }, () => ""));
     setFreeWorkoutSets(Array.from({ length: 10 }, () => ({ reps: "", weight: "" })));
+    setHyroxCurrentRound(1);
+    setHyroxCurrentStep(0);
+    setHyroxStepActual("");
+    setHyroxStepLoad("");
+    setHyroxLog([]);
   };
 
   const setBearRoundWeight = (idx: number, value: string) => {
@@ -222,12 +361,45 @@ export function LiveTrainingFlow() {
     setCompletedReps((c) => Math.max(0, c - last));
   };
 
+  const confirmHyroxStep = () => {
+    if (!hyroxVariant) return;
+    const stepDef = hyroxVariant.steps[hyroxCurrentStep];
+    if (!stepDef) return;
+    const actual = hyroxStepActual.trim();
+    const load = hyroxStepLoad.trim();
+    const actualNumber = parseNaturalNumber(actual);
+    if (actualNumber > 0) {
+      setCompletedReps((c) => c + actualNumber);
+    } else if (stepDef.defaultReps > 0) {
+      setCompletedReps((c) => c + stepDef.defaultReps);
+    }
+    setHyroxLog((prev) => [
+      ...prev,
+      {
+        round: hyroxCurrentRound,
+        step: stepDef.name,
+        target: stepDef.target,
+        actual: actual || String(stepDef.defaultReps),
+        load,
+      },
+    ]);
+
+    if (hyroxCurrentStep < hyroxVariant.steps.length - 1) {
+      setHyroxCurrentStep((s) => s + 1);
+    } else {
+      setHyroxCurrentStep(0);
+      setHyroxCurrentRound((r) => Math.min(hyroxVariant.rounds, r + 1));
+    }
+    setHyroxStepActual("");
+    setHyroxStepLoad("");
+  };
+
   const finishAndSave = useCallback(() => {
-    if (!wod) return;
+    if (!wod && !hyroxVariant) return;
     const durationSec = Math.floor(elapsedMs / 1000);
     const loadTrim = userLoadInput.trim();
     const bearSeriesSummary =
-      wod.key === "bear_complex"
+      wod?.key === "bear_complex"
         ? bearRoundWeights
             .map((w, idx) => ({ idx, w: w.trim() }))
             .filter((x) => x.w.length > 0)
@@ -245,18 +417,29 @@ export function LiveTrainingFlow() {
           .map((x) => `S${x.idx + 1}: ${x.reps || "-"} reps @ ${x.weight || "-"}`)
           .join(" | ")
       : "";
+    const hyroxSummary = hyroxVariant
+      ? hyroxLog
+          .map((x) => `R${x.round} ${x.step}: ${x.actual}${x.load ? ` @ ${x.load}` : ""}`)
+          .join(" | ")
+      : "";
+    const hyroxSetupSummary = hyroxVariant
+      ? `Vstup: váha ${hyroxSetup.bodyWeightKg || "?"} kg, výška ${hyroxSetup.heightCm || "?"} cm, farmer ${hyroxSetup.farmerCarry || "-"}, wall ball ${hyroxSetup.wallBall || "-"}, deadlift ${hyroxSetup.deadlift || "-"}, holeně citlivé: ${hyroxSetup.shinSensitive ? "ano" : "ne"}.`
+      : "";
+    const sessionLabel = hyroxVariant ? hyroxVariant.name : wod?.name ?? "Živý trénink";
     const entry = saveLiveWorkoutLog({
       sportCategory: sport,
       wodKey: freeWorkoutMode ? undefined : (wodKey ?? undefined),
-      wodName: wod.name,
+      wodName: sessionLabel,
       durationSec,
       repsCompleted: completedReps,
       repsTarget: target >= UNCAPPED_REPS_THRESHOLD ? 0 : target,
       notes: [
-        `Živý trénink — ${wod.name}. Čas ${formatElapsed(elapsedMs)}.`,
+        `Živý trénink — ${sessionLabel}. Čas ${formatElapsed(elapsedMs)}.`,
         loadTrim ? ` Použité váhy / škálování: ${loadTrim}.` : "",
         bearSeriesSummary ? ` Série Bear Complex: ${bearSeriesSummary}.` : "",
         freeSetSummary ? ` Série Free Workout: ${freeSetSummary}.` : "",
+        hyroxSetupSummary,
+        hyroxSummary ? ` Kroky HYROX: ${hyroxSummary}.` : "",
       ].join(""),
       loadUsed: loadTrim || undefined,
     });
@@ -270,15 +453,22 @@ export function LiveTrainingFlow() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry),
     }).catch(() => undefined);
-  }, [sport, userLoadInput, bearRoundWeights, freeWorkoutMode, freeWorkoutSets, wod, wodKey, elapsedMs, completedReps, target]);
+  }, [sport, userLoadInput, bearRoundWeights, freeWorkoutMode, freeWorkoutSets, hyroxVariant, hyroxLog, hyroxSetup, wod, wodKey, elapsedMs, completedReps, target]);
 
   const openActive = () => {
-    if (!wod) return;
+    if (!wod && !hyroxVariant) return;
     setCompletedReps(0);
     undoLast.current = [];
     startedAtRef.current = null;
     setElapsedMs(0);
     setRunning(false);
+    if (hyroxVariant) {
+      setHyroxCurrentRound(1);
+      setHyroxCurrentStep(0);
+      setHyroxStepActual("");
+      setHyroxStepLoad("");
+      setHyroxLog([]);
+    }
     setActiveOpen(true);
   };
 
@@ -286,6 +476,7 @@ export function LiveTrainingFlow() {
     () =>
       [
         { id: "crossfit" as const, label: "CrossFit", hint: "Benchmark nebo Open" },
+        { id: "hyrox" as const, label: "HYROX", hint: "4 domácí varianty + krokový tracker" },
         { id: "bodybuilding" as const, label: "Bodybuilding", hint: "brzy: série a váhy" },
         { id: "bodyweight" as const, label: "Bodyweight", hint: "Girl / benchmark bez činky" },
       ] as const,
@@ -307,6 +498,7 @@ export function LiveTrainingFlow() {
                 setCfKind("benchmark");
                 setWodKey(null);
                 setFreeWorkoutMode(false);
+                setHyroxVariantKey(null);
                 resetSession();
               }}
               className={`rounded-lg border px-4 py-2 text-sm transition ${
@@ -460,6 +652,115 @@ export function LiveTrainingFlow() {
         </section>
       )}
 
+      {sport === "hyrox" && (
+        <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
+          <h3 className="text-base font-semibold text-zinc-100">2. HYROX — výběr varianty</h3>
+          <p className="mb-3 text-xs text-ew-muted">
+            Vyber variantu, nastav vstupní váhy/míry a potvrzuj postupně každý krok. Počítadlo rep funguje ručně i přes potvrzení kroku.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(Object.keys(HYROX_VARIANTS) as HyroxVariantDef["key"][]).map((k) => {
+              const v = HYROX_VARIANTS[k];
+              const selected = hyroxVariantKey === k;
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => {
+                    setHyroxVariantKey(k);
+                    setWodKey(null);
+                    setFreeWorkoutMode(false);
+                    setActiveOpen(false);
+                  }}
+                  className={`rounded-lg border px-3 py-2 text-sm ${selected ? "border-ew-blue-light bg-ew-bg text-white" : "border-ew-border text-zinc-300 hover:border-zinc-500"}`}
+                >
+                  {v.name}
+                </button>
+              );
+            })}
+          </div>
+
+          {hyroxVariant && (
+            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+              <div className="rounded-lg border border-ew-border bg-ew-bg p-3">
+                <p className="text-sm font-semibold text-zinc-200">{hyroxVariant.name}</p>
+                <p className="mt-1 text-xs text-zinc-400">{hyroxVariant.summary}</p>
+                <p className="mt-2 text-xs text-zinc-500">
+                  Cíl: {hyroxVariant.goalTime} · Odhad: {hyroxVariant.kcalRange} · Kola: {hyroxVariant.rounds}
+                </p>
+                <ul className="mt-3 space-y-1 text-xs text-zinc-300">
+                  {hyroxVariant.steps.map((s) => (
+                    <li key={s.name}>
+                      • {s.name}: <span className="text-zinc-400">{s.target}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-lg border border-ew-border bg-ew-bg p-3">
+                <p className="mb-2 text-sm font-semibold text-zinc-200">Vstupní váhy a míry</p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input
+                    type="text"
+                    value={hyroxSetup.bodyWeightKg}
+                    onChange={(e) => setHyroxSetup((p) => ({ ...p, bodyWeightKg: e.target.value }))}
+                    placeholder="Váha (kg)"
+                    className={formInputClass}
+                  />
+                  <input
+                    type="text"
+                    value={hyroxSetup.heightCm}
+                    onChange={(e) => setHyroxSetup((p) => ({ ...p, heightCm: e.target.value }))}
+                    placeholder="Výška (cm)"
+                    className={formInputClass}
+                  />
+                  <input
+                    type="text"
+                    value={hyroxSetup.farmerCarry}
+                    onChange={(e) => setHyroxSetup((p) => ({ ...p, farmerCarry: e.target.value }))}
+                    placeholder="Farmer carry"
+                    className={formInputClass}
+                  />
+                  <input
+                    type="text"
+                    value={hyroxSetup.wallBall}
+                    onChange={(e) => setHyroxSetup((p) => ({ ...p, wallBall: e.target.value }))}
+                    placeholder="Wall ball"
+                    className={formInputClass}
+                  />
+                  <input
+                    type="text"
+                    value={hyroxSetup.deadlift}
+                    onChange={(e) => setHyroxSetup((p) => ({ ...p, deadlift: e.target.value }))}
+                    placeholder="Deadlift"
+                    className={formInputClass}
+                  />
+                  <label className="flex items-center gap-2 rounded-md border border-ew-border px-3 py-2 text-sm text-zinc-300">
+                    <input
+                      type="checkbox"
+                      checked={hyroxSetup.shinSensitive}
+                      onChange={(e) => setHyroxSetup((p) => ({ ...p, shinSensitive: e.target.checked }))}
+                    />
+                    Citlivé holeně dnes
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {hyroxVariant && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={openActive}
+                className="rounded-md bg-ew-blue px-3 py-2 text-sm text-white hover:bg-ew-blue-dark"
+              >
+                Spustit HYROX tracker
+              </button>
+            </div>
+          )}
+        </section>
+      )}
+
       {sport === "bodyweight" && (
         <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
           <h3 className="text-base font-semibold text-zinc-100">2. Bodyweight — výběr WOD</h3>
@@ -586,7 +887,7 @@ export function LiveTrainingFlow() {
         </div>
       )}
 
-      {activeOpen && wod && (
+      {activeOpen && (wod || hyroxVariant) && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           role="dialog"
@@ -595,9 +896,9 @@ export function LiveTrainingFlow() {
         >
           <div className="max-h-[92vh] w-full max-w-xl overflow-y-auto rounded-xl border border-ew-border bg-ew-bg p-4 shadow-xl">
             <h3 id="live-session-title" className="text-lg font-semibold text-white">
-              {wod.name} — živý průběh
+              {sessionName} — živý průběh
             </h3>
-            {sport === "crossfit" && (
+            {sport === "crossfit" && wod && (
               <CrossfitLoadBlock
                 wod={wod}
                 userLoad={userLoadInput}
@@ -606,7 +907,9 @@ export function LiveTrainingFlow() {
               />
             )}
 
-            {(() => {
+            {!hyroxVariant &&
+              (() => {
+              if (!wod) return null;
               const detail = repProgressDetail(wod, completedReps);
               const showBigFraction =
                 target > 0 && target < UNCAPPED_REPS_THRESHOLD && !hideRepRemaining;
@@ -665,6 +968,43 @@ export function LiveTrainingFlow() {
               );
             })()}
 
+            {hyroxVariant && (
+              <div className="mt-4 space-y-3 rounded-xl border border-ew-border bg-ew-panel p-3">
+                <p className="text-xs text-ew-muted">
+                  Kolo {Math.min(hyroxCurrentRound, hyroxVariant.rounds)}/{hyroxVariant.rounds} · krok {Math.min(hyroxCurrentStep + 1, hyroxVariant.steps.length)}/{hyroxVariant.steps.length}
+                  {" · "}hotovo {hyroxDoneSteps}/{hyroxTotalSteps}
+                </p>
+                <p className="text-sm font-semibold text-zinc-200">
+                  {hyroxVariant.steps[hyroxCurrentStep]?.name} <span className="text-zinc-400">({hyroxVariant.steps[hyroxCurrentStep]?.target})</span>
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={hyroxStepActual}
+                    onChange={(e) => setHyroxStepActual(e.target.value)}
+                    placeholder="Skutečnost (reps/metry)"
+                    className={formInputClass}
+                  />
+                  <input
+                    type="text"
+                    value={hyroxStepLoad}
+                    onChange={(e) => setHyroxStepLoad(e.target.value)}
+                    placeholder="Váha / pozn."
+                    className={formInputClass}
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={confirmHyroxStep}
+                  disabled={hyroxDoneSteps >= hyroxTotalSteps}
+                  className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+                >
+                  Potvrdit krok
+                </button>
+              </div>
+            )}
+
             <div className="mt-4">
               <p className="mb-2 text-sm font-medium text-zinc-300">Přičíst opakování</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -688,7 +1028,7 @@ export function LiveTrainingFlow() {
               </button>
             </div>
 
-            {wod.key === "bear_complex" && (
+            {wod?.key === "bear_complex" && (
               <div className="mt-4 rounded-xl border border-ew-border bg-ew-panel p-3">
                 <p className="mb-2 text-sm font-medium text-zinc-200">Bear Complex — série a váha</p>
                 <p className="mb-3 text-xs text-zinc-500">Doplň váhu pro jednotlivé série 1–5 (typicky rostoucí).</p>
@@ -758,6 +1098,19 @@ export function LiveTrainingFlow() {
                 >
                   Přidat sérii
                 </button>
+              </div>
+            )}
+
+            {hyroxVariant && hyroxLog.length > 0 && (
+              <div className="mt-4 rounded-xl border border-ew-border bg-ew-panel p-3">
+                <p className="mb-2 text-sm font-medium text-zinc-200">Potvrzené kroky</p>
+                <div className="max-h-40 overflow-auto text-xs text-zinc-300">
+                  {hyroxLog.map((x, idx) => (
+                    <div key={`${idx}-${x.round}-${x.step}`} className="border-b border-ew-border/60 py-1 last:border-0">
+                      R{x.round} · {x.step}: {x.actual} {x.load ? `@ ${x.load}` : ""}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 

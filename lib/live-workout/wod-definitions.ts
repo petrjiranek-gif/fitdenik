@@ -24,7 +24,14 @@ export {
 export type { BodyweightWodKey } from "@/lib/live-workout/bodyweight-wods-data";
 export { BODYWEIGHT_WOD_ORDER, BODYWEIGHT_WODS } from "@/lib/live-workout/bodyweight-wods-data";
 
-export type CrossFitGirlKey = "annie" | "andi" | "angie" | "karen" | "kalsu" | "murph";
+export type CrossFitGirlKey =
+  | "annie"
+  | "andi"
+  | "angie"
+  | "karen"
+  | "kalsu"
+  | "murph"
+  | "bear_complex";
 
 export type LiveWodKey = CrossFitGirlKey | OpenWodKey | BodyweightWodKey;
 
@@ -155,6 +162,26 @@ export const CROSSFIT_WODS: Record<CrossFitGirlKey, LiveWodDefinition> = {
     rxLoadDescription:
       "Střední blok v počítadle bez činky; volitelná vesta 20/14 lb (M/W) na celý Murph dle pravidel",
   },
+  bear_complex: {
+    key: "bear_complex",
+    kind: "benchmark",
+    name: "Bear Complex",
+    subtitle: "CrossFit benchmark / strength complex",
+    scoreType: "For Load (5 rounds)",
+    prescription:
+      "5 kol na zátěž, každé kolo je 7 nepřerušených setů: 1 power clean, 1 front squat, 1 push press, 1 back squat, 1 push press.",
+    description:
+      "Skóre je nejtěžší úspěšná zátěž při dodržení nepřerušených setů. Počítadlo níže slouží jako orientační průběh (35 setů celkem), klíčový výsledek zapiš do poznámky.",
+    segments: [{ label: "7 setů × 5 kol (orientačně)", reps: 35 }],
+    benchmarks: [
+      { level: "Formát", timeRange: "5 rounds for load" },
+      { level: "Cíl", timeRange: "technicky čisté nepřerušené sety" },
+      { level: "Zdroj", timeRange: "WodWell" },
+    ],
+    referenceUrl: "https://www.wodwell.com/wod/bear-complex/",
+    liveFinishAnytime: true,
+    rxLoadDescription: "Váha dle úrovně; klíč je nepouštět činku mezi prvky setu",
+  },
 };
 
 export const LIVE_WODS: Record<LiveWodKey, LiveWodDefinition> = {
@@ -163,7 +190,16 @@ export const LIVE_WODS: Record<LiveWodKey, LiveWodDefinition> = {
   ...BODYWEIGHT_WODS,
 };
 
-export const CROSSFIT_WOD_ORDER: CrossFitGirlKey[] = ["annie", "andi", "angie", "karen", "kalsu", "murph"];
+export const CROSSFIT_WOD_ORDER: LiveWodKey[] = [
+  "annie",
+  "andi",
+  "angie",
+  "karen",
+  "kalsu",
+  "murph",
+  "open_12_1",
+  "bear_complex",
+];
 
 export function totalTargetReps(w: LiveWodDefinition): number {
   return w.segments.reduce((sum, s) => sum + s.reps, 0);

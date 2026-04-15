@@ -23,6 +23,32 @@ function kcalPerMin(s: TrainingSession): number {
   return s.calories / s.durationMin;
 }
 
+function toDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function dateKeyToDate(key: string): Date {
+  return new Date(`${key}T00:00:00`);
+}
+
+function addDays(d: Date, delta: number): Date {
+  const out = new Date(d);
+  out.setDate(out.getDate() + delta);
+  return out;
+}
+
+function monthLabel(d: Date): string {
+  return d.toLocaleDateString("cs-CZ", { month: "long", year: "numeric" });
+}
+
+function weekdayShortLabel(indexMondayFirst: number): string {
+  const base = new Date(2025, 0, 6 + indexMondayFirst); // 2025-01-06 = pondělí
+  return base.toLocaleDateString("cs-CZ", { weekday: "short" });
+}
+
 function SportPieChart({ bySport }: { bySport: { sport: string; count: number }[] }) {
   const total = bySport.reduce((a, b) => a + b.count, 0) || 1;
   let acc = 0;
@@ -78,6 +104,12 @@ export function TrainingOverview() {
   const [editing, setEditing] = useState<TrainingSession | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [calendarSportFilter, setCalendarSportFilter] = useState<string>("vše");
 
   const reloadLocal = useCallback(() => {
     if (!useSupabase) setSessions(repositories.training.list());
@@ -124,6 +156,12 @@ export function TrainingOverview() {
     [sessions],
   );
 
+  useEffect(() => {
+    if (!selectedDate && sorted.length > 0) {
+      setSelectedDate(sorted[0].date);
+    }
+  }, [selectedDate, sorted]);
+
   const stats = useMemo(() => {
     const bySportMap = new Map<string, number>();
     let totalMin = 0;
@@ -151,6 +189,75 @@ export function TrainingOverview() {
       .sort((a, b) => b.kpm - a.kpm)
       .slice(0, 8);
   }, [sessions]);
+
+  const calendarSessions = useMemo(
+    () => sessions.filter((s) => calendarSportFilter === "vše" || s.sportType === calendarSportFilter),
+    [sessions, calendarSportFilter],
+  );
+
+  const sessionsByDate = useMemo(() => {
+    const map = new Map<string, TrainingSession[]>();
+    for (const s of calendarSessions) {
+      const arr = map.get(s.date) ?? [];
+      arr.push(s);
+      map.set(s.date, arr);
+    }
+    return map;
+  }, [calendarSessions]);
+
+  const calendarCells = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const dayShiftMondayFirst = (firstDay.getDay() + 6) % 7;
+    const gridStart = new Date(year, month, 1 - dayShiftMondayFirst);
+    return Array.from({ length: 42 }, (_, i) => {
+      const date = new Date(gridStart);
+      date.setDate(gridStart.getDate() + i);
+      const key = toDateKey(date);
+      return {
+        date,
+        key,
+        inCurrentMonth: date.getMonth() === month,
+        count: sessionsByDate.get(key)?.length ?? 0,
+      };
+    });
+  }, [calendarMonth, sessionsByDate]);
+
+  const selectedSessions = useMemo(() => {
+    if (!selectedDate) return [];
+    return [...(sessionsByDate.get(selectedDate) ?? [])].sort((a, b) => a.title.localeCompare(b.title, "cs-CZ"));
+  }, [selectedDate, sessionsByDate]);
+
+  const streakStats = useMemo(() => {
+    const dayKeys = [...sessionsByDate.keys()].sort((a, b) => dateKeyToDate(a).getTime() - dateKeyToDate(b).getTime());
+    if (dayKeys.length === 0) return { current: 0, best: 0 };
+
+    const daySet = new Set(dayKeys);
+    let best = 0;
+    let run = 0;
+    let prev: Date | null = null;
+    for (const k of dayKeys) {
+      const d = dateKeyToDate(k);
+      if (!prev) {
+        run = 1;
+      } else {
+        const expected = toDateKey(addDays(prev, 1));
+        run = expected === k ? run + 1 : 1;
+      }
+      if (run > best) best = run;
+      prev = d;
+    }
+
+    let current = 0;
+    const today = new Date();
+    let cursor = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    while (daySet.has(toDateKey(cursor))) {
+      current += 1;
+      cursor = addDays(cursor, -1);
+    }
+    return { current, best };
+  }, [sessionsByDate]);
 
   const onDelete = async (id: string) => {
     if (!confirm("Opravdu smazat tento trénink?")) return;
@@ -240,6 +347,124 @@ export function TrainingOverview() {
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 className="text-base font-semibold text-zinc-100">Kalendář tréninků</h3>
+            <p className="text-xs text-ew-muted">Dny s tréninkem jsou zvýrazněné. Klikni na den pro detail.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1))}
+              className="rounded-md border border-ew-border px-3 py-1.5 text-sm text-zinc-300 hover:bg-ew-bg"
+            >
+              ←
+            </button>
+            <span className="min-w-36 text-center text-sm font-medium text-zinc-200 capitalize">{monthLabel(calendarMonth)}</span>
+            <button
+              type="button"
+              onClick={() => setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1))}
+              className="rounded-md border border-ew-border px-3 py-1.5 text-sm text-zinc-300 hover:bg-ew-bg"
+            >
+              →
+            </button>
+          </div>
+        </div>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <label className="flex items-center gap-2 text-sm text-zinc-300">
+            <span className="text-xs text-ew-muted">Filtr sportu:</span>
+            <select
+              value={calendarSportFilter}
+              onChange={(e) => setCalendarSportFilter(e.target.value)}
+              className="rounded-md border border-ew-border bg-ew-bg px-2 py-1.5 text-sm text-zinc-200"
+            >
+              <option value="vše">Vše</option>
+              {SPORT_TYPE_OPTIONS.map((sport) => (
+                <option key={sport} value={sport}>
+                  {sport}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="rounded-md border border-ew-border bg-ew-bg px-2 py-1.5 text-xs text-zinc-300">
+            Streak: <span className="font-semibold text-emerald-300">{streakStats.current} dní</span>
+            {" · "}max: <span className="font-semibold text-zinc-200">{streakStats.best}</span>
+          </p>
+        </div>
+
+        <div className="grid grid-cols-7 gap-1">
+          {Array.from({ length: 7 }, (_, i) => (
+            <div key={i} className="pb-1 text-center text-[11px] font-medium uppercase tracking-wide text-ew-muted">
+              {weekdayShortLabel(i)}
+            </div>
+          ))}
+          {calendarCells.map((cell) => {
+            const isSelected = selectedDate === cell.key;
+            const intensityClass =
+              cell.count >= 3
+                ? "bg-emerald-500/30 text-emerald-100 border-emerald-400/40"
+                : cell.count === 2
+                  ? "bg-emerald-500/20 text-emerald-100 border-emerald-500/30"
+                  : cell.count === 1
+                    ? "bg-emerald-500/10 text-emerald-100 border-emerald-600/30"
+                    : "bg-ew-bg text-zinc-500 border-ew-border";
+            return (
+              <button
+                key={cell.key}
+                type="button"
+                onClick={() => setSelectedDate(cell.key)}
+                className={`relative h-10 rounded-md border text-sm transition ${intensityClass} ${
+                  cell.inCurrentMonth ? "" : "opacity-45"
+                } ${isSelected ? "ring-2 ring-ew-blue-light" : "hover:ring-1 hover:ring-ew-blue/40"}`}
+                title={cell.count > 0 ? `${cell.key}: ${cell.count} trénink(y)` : `${cell.key}: bez tréninku`}
+              >
+                <span>{cell.date.getDate()}</span>
+                {cell.count > 0 && (
+                  <span className="absolute right-1 top-1 rounded bg-emerald-500/30 px-1 text-[10px] leading-none text-emerald-100">
+                    {cell.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mt-4 rounded-lg border border-ew-border bg-ew-bg p-3">
+          <p className="text-xs font-medium text-zinc-300">
+            {selectedDate ? `Detail dne ${selectedDate}` : "Vyber den v kalendáři"}
+          </p>
+          {selectedSessions.length === 0 ? (
+            <p className="mt-2 text-sm text-ew-muted">V tento den není zapsaný žádný trénink.</p>
+          ) : (
+            <ul className="mt-2 space-y-2 text-sm">
+              {selectedSessions.map((s) => (
+                <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-ew-border/70 pb-2 last:border-0">
+                  <span className="text-zinc-200">
+                    {s.title} <span className="text-ew-muted">({s.sportType})</span>
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-ew-muted">
+                      {s.durationMin} min · {s.calories} kcal
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSaveError(null);
+                        setEditing(s);
+                      }}
+                      className="text-ew-blue-light hover:underline"
+                    >
+                      Upravit
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </section>
 
       <section className="overflow-hidden rounded-xl border border-ew-border bg-ew-panel">

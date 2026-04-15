@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BODYWEIGHT_WOD_ORDER,
   CROSSFIT_WOD_ORDER,
@@ -119,6 +119,7 @@ export function LiveTrainingFlow() {
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [userLoadInput, setUserLoadInput] = useState("");
+  const [bearRoundWeights, setBearRoundWeights] = useState<string[]>(() => Array.from({ length: 5 }, () => ""));
 
   const wod = wodKey ? LIVE_WODS[wodKey] : null;
   const target = wod ? totalTargetReps(wod) : 0;
@@ -140,6 +141,7 @@ export function LiveTrainingFlow() {
 
   useEffect(() => {
     setUserLoadInput("");
+    setBearRoundWeights(Array.from({ length: 5 }, () => ""));
   }, [wodKey, sport]);
 
   useEffect(() => {
@@ -170,6 +172,11 @@ export function LiveTrainingFlow() {
     setCompletedReps(0);
     setActiveOpen(false);
     setUserLoadInput("");
+    setBearRoundWeights(Array.from({ length: 5 }, () => ""));
+  };
+
+  const setBearRoundWeight = (idx: number, value: string) => {
+    setBearRoundWeights((prev) => prev.map((v, i) => (i === idx ? value : v)));
   };
 
   const addReps = (n: number) => {
@@ -193,6 +200,14 @@ export function LiveTrainingFlow() {
     if (!wod || !wodKey) return;
     const durationSec = Math.floor(elapsedMs / 1000);
     const loadTrim = userLoadInput.trim();
+    const bearSeriesSummary =
+      wod.key === "bear_complex"
+        ? bearRoundWeights
+            .map((w, idx) => ({ idx, w: w.trim() }))
+            .filter((x) => x.w.length > 0)
+            .map((x) => `S${x.idx + 1}: ${x.w}`)
+            .join(" | ")
+        : "";
     const entry = saveLiveWorkoutLog({
       sportCategory: sport,
       wodKey,
@@ -203,6 +218,7 @@ export function LiveTrainingFlow() {
       notes: [
         `Živý trénink — ${wod.name}. Čas ${formatElapsed(elapsedMs)}.`,
         loadTrim ? ` Použité váhy / škálování: ${loadTrim}.` : "",
+        bearSeriesSummary ? ` Série Bear Complex: ${bearSeriesSummary}.` : "",
       ].join(""),
       loadUsed: loadTrim || undefined,
     });
@@ -216,7 +232,7 @@ export function LiveTrainingFlow() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry),
     }).catch(() => undefined);
-  }, [sport, userLoadInput, wod, wodKey, elapsedMs, completedReps, target]);
+  }, [sport, userLoadInput, bearRoundWeights, wod, wodKey, elapsedMs, completedReps, target]);
 
   const openActive = () => {
     if (!wodKey || !wod) return;
@@ -610,6 +626,30 @@ export function LiveTrainingFlow() {
                 Vrátit poslední přičtení
               </button>
             </div>
+
+            {wod.key === "bear_complex" && (
+              <div className="mt-4 rounded-xl border border-ew-border bg-ew-panel p-3">
+                <p className="mb-2 text-sm font-medium text-zinc-200">Bear Complex — série a váha</p>
+                <p className="mb-3 text-xs text-zinc-500">Doplň váhu pro jednotlivé série 1–5 (typicky rostoucí).</p>
+                <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Série</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Váha</div>
+                  {bearRoundWeights.map((weight, idx) => (
+                    <Fragment key={idx}>
+                      <div className="flex items-center text-sm text-zinc-300">{idx + 1}</div>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={weight}
+                        onChange={(e) => setBearRoundWeight(idx, e.target.value)}
+                        placeholder="např. 40 kg / 88 lb"
+                        className={formInputClass}
+                      />
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="mt-6 flex flex-wrap gap-2 border-t border-ew-border pt-4">
               <button

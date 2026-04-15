@@ -44,6 +44,21 @@ function andiProgressLabel(completed: number): string {
 /** Součet rep v definici ≥ této hodnoty = v UI „bez stropu“ (AMRAP / obecný Open), ne reálný cíl dokončení. */
 const UNCAPPED_REPS_THRESHOLD = 9000;
 
+const FREE_WORKOUT_WOD: LiveWodDefinition = {
+  key: "free_workout",
+  kind: "benchmark",
+  name: "Free Workout",
+  subtitle: "Volná evidence tréninku",
+  scoreType: "Custom",
+  prescription: "Volný trénink bez pevného předpisu.",
+  description: "Zapisuj série, váhy a opakování podle vlastního tréninku.",
+  segments: [{ label: "Volné opakování", reps: 0 }],
+  benchmarks: [{ level: "Tip", timeRange: "sleduj techniku a progres zátěže po sériích" }],
+  referenceUrl: "https://www.wodwell.com/",
+  liveFinishAnytime: true,
+  rxLoadDescription: "Doplň používané váhy a zapiš je po sériích níže.",
+};
+
 function segmentLabel(wod: LiveWodDefinition, completed: number): string {
   if (wod.key === "angie" || wod.key === "bw_angie") return angieProgressLabel(completed);
   if (wod.key === "andi") return andiProgressLabel(completed);
@@ -110,6 +125,7 @@ export function LiveTrainingFlow() {
   const [cfKind, setCfKind] = useState<"benchmark" | "open">("benchmark");
   const [openYear, setOpenYear] = useState<OpenSeasonYear>(OPEN_SEASON_YEAR_ORDER[0]);
   const [wodKey, setWodKey] = useState<LiveWodKey | null>(null);
+  const [freeWorkoutMode, setFreeWorkoutMode] = useState(false);
   const [prescriptionOpen, setPrescriptionOpen] = useState(false);
   const [activeOpen, setActiveOpen] = useState(false);
   const [completedReps, setCompletedReps] = useState(0);
@@ -120,15 +136,19 @@ export function LiveTrainingFlow() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [userLoadInput, setUserLoadInput] = useState("");
   const [bearRoundWeights, setBearRoundWeights] = useState<string[]>(() => Array.from({ length: 5 }, () => ""));
+  const [freeWorkoutSets, setFreeWorkoutSets] = useState<Array<{ reps: string; weight: string }>>(
+    () => Array.from({ length: 10 }, () => ({ reps: "", weight: "" })),
+  );
 
-  const wod = wodKey ? LIVE_WODS[wodKey] : null;
+  const selectedWod = wodKey ? LIVE_WODS[wodKey] : null;
+  const wod = freeWorkoutMode ? FREE_WORKOUT_WOD : selectedWod;
   const target = wod ? totalTargetReps(wod) : 0;
   const remaining = Math.max(0, target - completedReps);
   const hideRepRemaining =
     wod?.liveFinishAnytime === true &&
     (target >= UNCAPPED_REPS_THRESHOLD || /amrap/i.test(wod.scoreType));
   const canFinishSession = Boolean(
-    wod && (wod.liveFinishAnytime || completedReps >= target),
+    wod && (wod.liveFinishAnytime || target === 0 || completedReps >= target),
   );
 
   useEffect(() => {
@@ -142,6 +162,7 @@ export function LiveTrainingFlow() {
   useEffect(() => {
     setUserLoadInput("");
     setBearRoundWeights(Array.from({ length: 5 }, () => ""));
+    setFreeWorkoutSets(Array.from({ length: 10 }, () => ({ reps: "", weight: "" })));
   }, [wodKey, sport]);
 
   useEffect(() => {
@@ -173,6 +194,7 @@ export function LiveTrainingFlow() {
     setActiveOpen(false);
     setUserLoadInput("");
     setBearRoundWeights(Array.from({ length: 5 }, () => ""));
+    setFreeWorkoutSets(Array.from({ length: 10 }, () => ({ reps: "", weight: "" })));
   };
 
   const setBearRoundWeight = (idx: number, value: string) => {
@@ -181,7 +203,11 @@ export function LiveTrainingFlow() {
 
   const addReps = (n: number) => {
     if (!wod) return;
-    setCompletedReps((c) => Math.min(target, c + n));
+    if (target > 0) {
+      setCompletedReps((c) => Math.min(target, c + n));
+      return;
+    }
+    setCompletedReps((c) => c + n);
   };
 
   const undoLast = useRef<number[]>([]);
@@ -197,7 +223,7 @@ export function LiveTrainingFlow() {
   };
 
   const finishAndSave = useCallback(() => {
-    if (!wod || !wodKey) return;
+    if (!wod) return;
     const durationSec = Math.floor(elapsedMs / 1000);
     const loadTrim = userLoadInput.trim();
     const bearSeriesSummary =
@@ -208,9 +234,20 @@ export function LiveTrainingFlow() {
             .map((x) => `S${x.idx + 1}: ${x.w}`)
             .join(" | ")
         : "";
+    const freeSetSummary = freeWorkoutMode
+      ? freeWorkoutSets
+          .map((s, idx) => ({
+            idx,
+            reps: s.reps.trim(),
+            weight: s.weight.trim(),
+          }))
+          .filter((x) => x.reps || x.weight)
+          .map((x) => `S${x.idx + 1}: ${x.reps || "-"} reps @ ${x.weight || "-"}`)
+          .join(" | ")
+      : "";
     const entry = saveLiveWorkoutLog({
       sportCategory: sport,
-      wodKey,
+      wodKey: freeWorkoutMode ? undefined : (wodKey ?? undefined),
       wodName: wod.name,
       durationSec,
       repsCompleted: completedReps,
@@ -219,6 +256,7 @@ export function LiveTrainingFlow() {
         `Živý trénink — ${wod.name}. Čas ${formatElapsed(elapsedMs)}.`,
         loadTrim ? ` Použité váhy / škálování: ${loadTrim}.` : "",
         bearSeriesSummary ? ` Série Bear Complex: ${bearSeriesSummary}.` : "",
+        freeSetSummary ? ` Série Free Workout: ${freeSetSummary}.` : "",
       ].join(""),
       loadUsed: loadTrim || undefined,
     });
@@ -232,10 +270,10 @@ export function LiveTrainingFlow() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry),
     }).catch(() => undefined);
-  }, [sport, userLoadInput, bearRoundWeights, wod, wodKey, elapsedMs, completedReps, target]);
+  }, [sport, userLoadInput, bearRoundWeights, freeWorkoutMode, freeWorkoutSets, wod, wodKey, elapsedMs, completedReps, target]);
 
   const openActive = () => {
-    if (!wodKey || !wod) return;
+    if (!wod) return;
     setCompletedReps(0);
     undoLast.current = [];
     startedAtRef.current = null;
@@ -268,6 +306,7 @@ export function LiveTrainingFlow() {
                 setSport(o.id);
                 setCfKind("benchmark");
                 setWodKey(null);
+                setFreeWorkoutMode(false);
                 resetSession();
               }}
               className={`rounded-lg border px-4 py-2 text-sm transition ${
@@ -295,6 +334,7 @@ export function LiveTrainingFlow() {
               onClick={() => {
                 setCfKind("benchmark");
                 setWodKey(null);
+                setFreeWorkoutMode(false);
                 setActiveOpen(false);
               }}
               className={`rounded-lg border px-3 py-2 text-sm ${
@@ -311,6 +351,7 @@ export function LiveTrainingFlow() {
                 setCfKind("open");
                 setOpenYear(OPEN_SEASON_YEAR_ORDER[0]);
                 setWodKey(null);
+                setFreeWorkoutMode(false);
                 setActiveOpen(false);
               }}
               className={`rounded-lg border px-3 py-2 text-sm ${
@@ -354,6 +395,23 @@ export function LiveTrainingFlow() {
             </p>
           ) : (
             <div className="flex flex-wrap gap-2">
+              {cfKind === "benchmark" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFreeWorkoutMode(true);
+                    setWodKey(null);
+                    setActiveOpen(false);
+                  }}
+                  className={`rounded-lg border px-3 py-2 text-sm ${
+                    freeWorkoutMode
+                      ? "border-ew-blue-light bg-ew-bg text-white"
+                      : "border-ew-border text-zinc-300 hover:border-zinc-500"
+                  }`}
+                >
+                  Free Workout
+                </button>
+              )}
               {(cfKind === "benchmark" ? CROSSFIT_WOD_ORDER : OPEN_WOD_KEYS_BY_YEAR[openYear]).map(
                 (key: LiveWodKey) => {
                   const def = LIVE_WODS[key];
@@ -362,11 +420,12 @@ export function LiveTrainingFlow() {
                       key={key}
                       type="button"
                       onClick={() => {
+                        setFreeWorkoutMode(false);
                         setWodKey(key);
                         setActiveOpen(false);
                       }}
                       className={`rounded-lg border px-3 py-2 text-sm ${
-                        wodKey === key
+                        !freeWorkoutMode && wodKey === key
                           ? "border-ew-blue-light bg-ew-bg text-white"
                           : "border-ew-border text-zinc-300 hover:border-zinc-500"
                       }`}
@@ -380,13 +439,15 @@ export function LiveTrainingFlow() {
           )}
           {wod && (
             <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setPrescriptionOpen(true)}
-                className="rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-sm text-ew-blue-light hover:border-ew-blue-light"
-              >
-                Zobrazit předpis a časy
-              </button>
+              {!freeWorkoutMode && (
+                <button
+                  type="button"
+                  onClick={() => setPrescriptionOpen(true)}
+                  className="rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-sm text-ew-blue-light hover:border-ew-blue-light"
+                >
+                  Zobrazit předpis a časy
+                </button>
+              )}
               <button
                 type="button"
                 onClick={openActive}
@@ -456,7 +517,7 @@ export function LiveTrainingFlow() {
         </section>
       )}
 
-      {prescriptionOpen && wod && (
+      {prescriptionOpen && wod && !freeWorkoutMode && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
           role="dialog"
@@ -648,6 +709,55 @@ export function LiveTrainingFlow() {
                     </Fragment>
                   ))}
                 </div>
+              </div>
+            )}
+            {freeWorkoutMode && (
+              <div className="mt-4 rounded-xl border border-ew-border bg-ew-panel p-3">
+                <p className="mb-2 text-sm font-medium text-zinc-200">Free Workout — série, opakování a váha</p>
+                <p className="mb-3 text-xs text-zinc-500">
+                  Výchozích 10 sérií. Můžeš postupně přidávat další řádky tlačítkem níže.
+                </p>
+                <div className="grid grid-cols-[auto_1fr_1fr] gap-x-3 gap-y-2">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Série</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Reps</div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Váha</div>
+                  {freeWorkoutSets.map((setRow, idx) => (
+                    <Fragment key={idx}>
+                      <div className="flex items-center text-sm text-zinc-300">{idx + 1}</div>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={setRow.reps}
+                        onChange={(e) =>
+                          setFreeWorkoutSets((prev) =>
+                            prev.map((s, i) => (i === idx ? { ...s, reps: e.target.value } : s)),
+                          )
+                        }
+                        placeholder="např. 10"
+                        className={formInputClass}
+                      />
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={setRow.weight}
+                        onChange={(e) =>
+                          setFreeWorkoutSets((prev) =>
+                            prev.map((s, i) => (i === idx ? { ...s, weight: e.target.value } : s)),
+                          )
+                        }
+                        placeholder="např. 60 kg"
+                        className={formInputClass}
+                      />
+                    </Fragment>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFreeWorkoutSets((prev) => [...prev, { reps: "", weight: "" }])}
+                  className="mt-3 rounded-md border border-ew-border px-3 py-2 text-sm text-zinc-200 hover:bg-ew-bg"
+                >
+                  Přidat sérii
+                </button>
               </div>
             )}
 

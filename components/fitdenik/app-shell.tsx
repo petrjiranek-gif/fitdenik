@@ -18,6 +18,7 @@ const SIDEBAR_LINKS: NavItem[] = [
   { label: "Benchmarky", href: "/benchmarks" },
   { label: "Knihovna workoutů", href: "/workout-library", disabled: true },
   { label: "Výuková videa", href: "/learning" },
+  { label: "Studium DBA", href: "/study" },
   { label: "Výživa", href: "/nutrition" },
   { label: "Konzultace", href: "/consultations", disabled: true },
   { label: "Importy", href: "/imports" },

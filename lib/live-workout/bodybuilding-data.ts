@@ -153,3 +153,16 @@ export const BODYBUILDING_MUSCLE_GROUPS: Record<string, string[]> = {
 };
 
 export const BODYBUILDING_MUSCLE_ORDER = Object.keys(BODYBUILDING_MUSCLE_GROUPS);
+
+/** Vyhledání cviků podle partie (přesná shoda + NFC normalizace pro Safari/OS rozhraní). */
+export function getBodybuildingExercisesForMuscle(muscle: string): string[] {
+  const m = muscle.trim();
+  if (!m) return [];
+  const direct = BODYBUILDING_MUSCLE_GROUPS[m];
+  if (direct?.length) return direct;
+  const nfc = m.normalize("NFC");
+  const key = Object.keys(BODYBUILDING_MUSCLE_GROUPS).find(
+    (k) => k === m || k.normalize("NFC") === nfc,
+  );
+  return key ? (BODYBUILDING_MUSCLE_GROUPS[key] ?? []) : [];
+}

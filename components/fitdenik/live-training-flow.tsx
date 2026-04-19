@@ -14,12 +14,13 @@ import {
   type OpenSeasonYear,
   totalTargetReps,
 } from "@/lib/live-workout/wod-definitions";
+import { BodybuildingExerciseCombobox } from "@/components/fitdenik/bodybuilding-exercise-combobox";
 import { formInputClass } from "@/components/fitdenik/form-fields";
 import { saveLiveWorkoutLog } from "@/lib/live-workout/persist-log";
 import {
   BODYBUILDING_EQUIPMENT,
-  BODYBUILDING_MUSCLE_GROUPS,
   BODYBUILDING_MUSCLE_ORDER,
+  getBodybuildingExercisesForMuscle,
   type BodybuildingEquipmentId,
 } from "@/lib/live-workout/bodybuilding-data";
 import { playRestCountdownTick, playRestFinished } from "@/lib/live-workout/rest-sounds";
@@ -632,7 +633,7 @@ export function LiveTrainingFlow() {
     setActiveOpen(true);
   };
 
-  const bbExerciseOptions = bbMuscleGroup ? BODYBUILDING_MUSCLE_GROUPS[bbMuscleGroup] ?? [] : [];
+  const bbExerciseOptions = getBodybuildingExercisesForMuscle(bbMuscleGroup);
 
   const sportOptions = useMemo(
     () =>
@@ -1065,25 +1066,22 @@ export function LiveTrainingFlow() {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-zinc-400" htmlFor="bb-exercise">
+            <div className="relative min-w-0">
+              <label
+                id="bb-exercise-label"
+                className="mb-1 block text-xs font-medium text-zinc-400"
+                htmlFor="bb-exercise"
+              >
                 Cvik
               </label>
-              <select
-                key={bbMuscleGroup || "bb-exercise-none"}
+              <BodybuildingExerciseCombobox
                 id="bb-exercise"
+                labelId="bb-exercise-label"
+                muscleGroup={bbMuscleGroup}
                 value={bbExercise}
-                onChange={(e) => setBbExercise(e.target.value)}
-                disabled={!bbMuscleGroup}
-                className="w-full appearance-auto rounded-lg border border-ew-border bg-ew-bg px-3 py-2 text-base text-white sm:text-sm disabled:opacity-40"
-              >
-                <option value="">— zvol cvik —</option>
-                {bbExerciseOptions.map((ex, idx) => (
-                  <option key={`${idx}-${ex}`} value={ex}>
-                    {ex}
-                  </option>
-                ))}
-              </select>
+                onChange={setBbExercise}
+                options={bbExerciseOptions}
+              />
             </div>
           </div>
 

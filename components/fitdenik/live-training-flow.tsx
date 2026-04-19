@@ -22,6 +22,7 @@ import {
   BODYBUILDING_MUSCLE_ORDER,
   type BodybuildingEquipmentId,
 } from "@/lib/live-workout/bodybuilding-data";
+import { playRestCountdownTick, playRestFinished } from "@/lib/live-workout/rest-sounds";
 import type { LiveSportCategory } from "@/lib/types";
 
 function formatElapsed(ms: number): string {
@@ -274,6 +275,9 @@ export function LiveTrainingFlow() {
   const [bbSetBaselineReps, setBbSetBaselineReps] = useState(0);
   const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
   const [restRemainingMs, setRestRemainingMs] = useState(0);
+  /** Po skončení (nebo přeskočení) pauzy: zvýraznit, že můžeš přidávat op. do další série. */
+  const [bbReadyForCurrentSet, setBbReadyForCurrentSet] = useState(false);
+  const restLastTickSecRef = useRef<number | null>(null);
 
   const selectedWod = wodKey ? LIVE_WODS[wodKey] : null;
   const wod = freeWorkoutMode ? FREE_WORKOUT_WOD : selectedWod;
@@ -342,10 +346,22 @@ export function LiveTrainingFlow() {
       setRestRemainingMs(0);
       return;
     }
+    restLastTickSecRef.current = null;
     const tick = () => {
       const left = restEndsAt - Date.now();
       setRestRemainingMs(Math.max(0, left));
-      if (left <= 0) setRestEndsAt(null);
+      const secLeft = Math.ceil(left / 1000);
+      if (left > 0 && secLeft >= 1 && secLeft <= 5) {
+        if (restLastTickSecRef.current !== secLeft) {
+          restLastTickSecRef.current = secLeft;
+          void playRestCountdownTick(secLeft);
+        }
+      }
+      if (left <= 0) {
+        void playRestFinished();
+        setBbReadyForCurrentSet(true);
+        setRestEndsAt(null);
+      }
     };
     tick();
     const id = setInterval(tick, 250);
@@ -379,6 +395,7 @@ export function LiveTrainingFlow() {
     setBbSetsConfirmed(0);
     setBbSetBaselineReps(0);
     setRestEndsAt(null);
+    setBbReadyForCurrentSet(false);
   };
 
   const setBearRoundWeight = (idx: number, value: string) => {
@@ -418,16 +435,22 @@ export function LiveTrainingFlow() {
     if (sport !== "bodybuilding" || bbProgram !== "10x10") return;
     if (restEndsAt != null) return;
     if (completedReps - bbSetBaselineReps < 10) return;
+    setBbReadyForCurrentSet(false);
     const next = bbSetsConfirmed + 1;
     setBbSetsConfirmed(next);
     setBbSetBaselineReps(completedReps);
     if (next < 10) {
       if (bbRestVariant === "count30") setRestEndsAt(Date.now() + 30_000);
-      if (bbRestVariant === "count60") setRestEndsAt(Date.now() + 60_000);
+      else if (bbRestVariant === "count60") setRestEndsAt(Date.now() + 60_000);
+      else if (bbRestVariant === "manual10") setBbReadyForCurrentSet(true);
     }
   };
 
-  const skipRestCountdown = () => setRestEndsAt(null);
+  const skipRestCountdown = () => {
+    void playRestFinished();
+    setBbReadyForCurrentSet(true);
+    setRestEndsAt(null);
+  };
 
   const confirmHyroxStep = () => {
     if (!hyroxVariant) return;
@@ -605,6 +628,7 @@ export function LiveTrainingFlow() {
     setBbSetsConfirmed(0);
     setBbSetBaselineReps(0);
     setRestEndsAt(null);
+    setBbReadyForCurrentSet(true);
     setActiveOpen(true);
   };
 
@@ -1299,12 +1323,26 @@ export function LiveTrainingFlow() {
 
             {sport === "bodybuilding" && bbProgram === "10x10" && (
               <div className="mt-4 space-y-3 rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
+                {bbReadyForCurrentSet && restEndsAt == null && bbSetsConfirmed < 10 && (
+                  <div className="rounded-lg border border-emerald-500/45 bg-emerald-950/35 px-4 py-3 text-center shadow-[0_0_24px_-8px_rgba(16,185,129,0.45)] animate-pulse">
+                    <p className="text-sm font-semibold text-emerald-100">
+                      Série {bbSetsConfirmed + 1}/10 — pokračuj
+                    </p>
+                    <p className="mt-1 text-xs text-emerald-200/90">
+                      {bbSetsConfirmed > 0 ? "Pauza skončila — " : ""}
+                      Přičti opakování (+1 až +10), potom níže potvrď dokončení série.
+                    </p>
+                  </div>
+                )}
                 {restEndsAt != null && bbRestVariant !== "manual10" && (
                   <div className="rounded-lg border border-amber-500/40 bg-ew-panel px-4 py-3 text-center">
                     <p className="text-xs font-medium uppercase tracking-wide text-amber-200/90">Pauza mezi sériemi</p>
                     <p className="mt-1 font-mono text-4xl font-bold tabular-nums text-amber-100">
                       {formatElapsed(restRemainingMs)}
                     </p>
+                    {restRemainingMs > 0 && Math.ceil(restRemainingMs / 1000) <= 5 && (
+                      <p className="mt-2 text-xs text-amber-300/95">Zvuk každou sekundu (posledních 5 s)</p>
+                    )}
                     <button
                       type="button"
                       onClick={skipRestCountdown}

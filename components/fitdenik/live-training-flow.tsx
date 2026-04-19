@@ -1053,10 +1053,9 @@ export function LiveTrainingFlow() {
                 onChange={(e) => {
                   const m = e.target.value;
                   setBbMuscleGroup(m);
-                  const list = BODYBUILDING_MUSCLE_GROUPS[m] ?? [];
-                  setBbExercise(list[0] ?? "");
+                  setBbExercise("");
                 }}
-                className="w-full rounded-lg border border-ew-border bg-ew-bg px-3 py-2 text-sm text-white"
+                className="w-full appearance-auto rounded-lg border border-ew-border bg-ew-bg px-3 py-2 text-base text-white sm:text-sm"
               >
                 <option value="">— zvol partii —</option>
                 {BODYBUILDING_MUSCLE_ORDER.map((m) => (
@@ -1071,15 +1070,16 @@ export function LiveTrainingFlow() {
                 Cvik
               </label>
               <select
+                key={bbMuscleGroup || "bb-exercise-none"}
                 id="bb-exercise"
                 value={bbExercise}
                 onChange={(e) => setBbExercise(e.target.value)}
                 disabled={!bbMuscleGroup}
-                className="w-full rounded-lg border border-ew-border bg-ew-bg px-3 py-2 text-sm text-white disabled:opacity-40"
+                className="w-full appearance-auto rounded-lg border border-ew-border bg-ew-bg px-3 py-2 text-base text-white sm:text-sm disabled:opacity-40"
               >
                 <option value="">— zvol cvik —</option>
-                {bbExerciseOptions.map((ex) => (
-                  <option key={ex} value={ex}>
+                {bbExerciseOptions.map((ex, idx) => (
+                  <option key={`${idx}-${ex}`} value={ex}>
                     {ex}
                   </option>
                 ))}

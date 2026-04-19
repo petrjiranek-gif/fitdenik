@@ -16,6 +16,12 @@ import {
 } from "@/lib/live-workout/wod-definitions";
 import { formInputClass } from "@/components/fitdenik/form-fields";
 import { saveLiveWorkoutLog } from "@/lib/live-workout/persist-log";
+import {
+  BODYBUILDING_EQUIPMENT,
+  BODYBUILDING_MUSCLE_GROUPS,
+  BODYBUILDING_MUSCLE_ORDER,
+  type BodybuildingEquipmentId,
+} from "@/lib/live-workout/bodybuilding-data";
 import type { LiveSportCategory } from "@/lib/types";
 
 function formatElapsed(ms: number): string {
@@ -43,6 +49,11 @@ function andiProgressLabel(completed: number): string {
 
 /** Součet rep v definici ≥ této hodnoty = v UI „bez stropu“ (AMRAP / obecný Open), ne reálný cíl dokončení. */
 const UNCAPPED_REPS_THRESHOLD = 9000;
+
+type BodybuildingProgramKey = "1x100" | "10x10";
+type TenByTenRestVariant = "manual10" | "count30" | "count60";
+
+const BB_TARGET_REPS = 100;
 
 const FREE_WORKOUT_WOD: LiveWodDefinition = {
   key: "free_workout",
@@ -253,21 +264,37 @@ export function LiveTrainingFlow() {
     shinSensitive: false,
   });
 
+  const [bbProgram, setBbProgram] = useState<BodybuildingProgramKey | null>(null);
+  const [bbRestVariant, setBbRestVariant] = useState<TenByTenRestVariant>("manual10");
+  const [bbEquipmentIds, setBbEquipmentIds] = useState<BodybuildingEquipmentId[]>([]);
+  const [bbMuscleGroup, setBbMuscleGroup] = useState("");
+  const [bbExercise, setBbExercise] = useState("");
+  const [bbWeightKg, setBbWeightKg] = useState("");
+  const [bbSetsConfirmed, setBbSetsConfirmed] = useState(0);
+  const [bbSetBaselineReps, setBbSetBaselineReps] = useState(0);
+  const [restEndsAt, setRestEndsAt] = useState<number | null>(null);
+  const [restRemainingMs, setRestRemainingMs] = useState(0);
+
   const selectedWod = wodKey ? LIVE_WODS[wodKey] : null;
   const wod = freeWorkoutMode ? FREE_WORKOUT_WOD : selectedWod;
   const hyroxVariant = hyroxVariantKey ? HYROX_VARIANTS[hyroxVariantKey] : null;
   const hyroxTotalSteps = hyroxVariant ? hyroxVariant.rounds * hyroxVariant.steps.length : 0;
   const hyroxDoneSteps = hyroxLog.length;
-  const sessionName = hyroxVariant ? hyroxVariant.name : wod?.name;
+  const sessionName =
+    hyroxVariant?.name ??
+    (sport === "bodybuilding" && bbProgram
+      ? `${bbProgram === "1x100" ? "1×100" : "10×10"} · ${bbExercise || "—"}`
+      : wod?.name);
   const target = wod ? totalTargetReps(wod) : 0;
-  const remaining = Math.max(0, target - completedReps);
   const hideRepRemaining =
     wod?.liveFinishAnytime === true &&
     (target >= UNCAPPED_REPS_THRESHOLD || /amrap/i.test(wod.scoreType));
   const canFinishSession = Boolean(
     hyroxVariant
       ? hyroxDoneSteps > 0
-      : wod && (wod.liveFinishAnytime || target === 0 || completedReps >= target),
+      : sport === "bodybuilding" && bbProgram
+        ? completedReps > 0 || bbSetsConfirmed > 0
+        : wod && (wod.liveFinishAnytime || target === 0 || completedReps >= target),
   );
 
   useEffect(() => {
@@ -310,6 +337,21 @@ export function LiveTrainingFlow() {
     };
   }, [running]);
 
+  useEffect(() => {
+    if (restEndsAt == null) {
+      setRestRemainingMs(0);
+      return;
+    }
+    const tick = () => {
+      const left = restEndsAt - Date.now();
+      setRestRemainingMs(Math.max(0, left));
+      if (left <= 0) setRestEndsAt(null);
+    };
+    tick();
+    const id = setInterval(tick, 250);
+    return () => clearInterval(id);
+  }, [restEndsAt]);
+
   const startTimer = () => {
     if (startedAtRef.current == null) {
       startedAtRef.current = Date.now();
@@ -334,6 +376,9 @@ export function LiveTrainingFlow() {
     setHyroxStepActual("");
     setHyroxStepLoad("");
     setHyroxLog([]);
+    setBbSetsConfirmed(0);
+    setBbSetBaselineReps(0);
+    setRestEndsAt(null);
   };
 
   const setBearRoundWeight = (idx: number, value: string) => {
@@ -341,6 +386,10 @@ export function LiveTrainingFlow() {
   };
 
   const addReps = (n: number) => {
+    if (sport === "bodybuilding" && bbProgram && (bbProgram === "1x100" || bbProgram === "10x10")) {
+      setCompletedReps((c) => Math.min(BB_TARGET_REPS, c + n));
+      return;
+    }
     if (!wod) return;
     if (target > 0) {
       setCompletedReps((c) => Math.min(target, c + n));
@@ -360,6 +409,25 @@ export function LiveTrainingFlow() {
     if (last == null) return;
     setCompletedReps((c) => Math.max(0, c - last));
   };
+
+  const toggleBbEquipment = (id: BodybuildingEquipmentId) => {
+    setBbEquipmentIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const confirmTenByTenSet = () => {
+    if (sport !== "bodybuilding" || bbProgram !== "10x10") return;
+    if (restEndsAt != null) return;
+    if (completedReps - bbSetBaselineReps < 10) return;
+    const next = bbSetsConfirmed + 1;
+    setBbSetsConfirmed(next);
+    setBbSetBaselineReps(completedReps);
+    if (next < 10) {
+      if (bbRestVariant === "count30") setRestEndsAt(Date.now() + 30_000);
+      if (bbRestVariant === "count60") setRestEndsAt(Date.now() + 60_000);
+    }
+  };
+
+  const skipRestCountdown = () => setRestEndsAt(null);
 
   const confirmHyroxStep = () => {
     if (!hyroxVariant) return;
@@ -395,9 +463,19 @@ export function LiveTrainingFlow() {
   };
 
   const finishAndSave = useCallback(() => {
-    if (!wod && !hyroxVariant) return;
+    if (!wod && !hyroxVariant && !(sport === "bodybuilding" && bbProgram)) return;
     const durationSec = Math.floor(elapsedMs / 1000);
     const loadTrim = userLoadInput.trim();
+    const bbEquipSummary = bbEquipmentIds
+      .map((id) => BODYBUILDING_EQUIPMENT.find((e) => e.id === id)?.label)
+      .filter(Boolean)
+      .join(", ");
+    const bbRestLabel =
+      bbRestVariant === "manual10"
+        ? "10 s (bez odpočtu, jen potvrzení série)"
+        : bbRestVariant === "count30"
+          ? "30 s odpočet"
+          : "1 min odpočet";
     const bearSeriesSummary =
       wod?.key === "bear_complex"
         ? bearRoundWeights
@@ -425,14 +503,32 @@ export function LiveTrainingFlow() {
     const hyroxSetupSummary = hyroxVariant
       ? `Vstup: váha ${hyroxSetup.bodyWeightKg || "?"} kg, výška ${hyroxSetup.heightCm || "?"} cm, farmer ${hyroxSetup.farmerCarry || "-"}, wall ball ${hyroxSetup.wallBall || "-"}, deadlift ${hyroxSetup.deadlift || "-"}, holeně citlivé: ${hyroxSetup.shinSensitive ? "ano" : "ne"}.`
       : "";
-    const sessionLabel = hyroxVariant ? hyroxVariant.name : wod?.name ?? "Živý trénink";
+    const sessionLabel =
+      hyroxVariant?.name ??
+      (sport === "bodybuilding" && bbProgram
+        ? `Bodybuilding ${bbProgram === "1x100" ? "1×100" : `10×10 (${bbRestLabel})`}`
+        : wod?.name ?? "Živý trénink");
+    const bbNotes =
+      sport === "bodybuilding" && bbProgram
+        ? [
+            ` Partie: ${bbMuscleGroup || "—"}. Cvik: ${bbExercise || "—"}.`,
+            bbWeightKg.trim() ? ` Váha: ${bbWeightKg.trim()} kg.` : "",
+            bbEquipSummary ? ` Nářadí: ${bbEquipSummary}.` : "",
+            bbProgram === "10x10" ? ` Potvrzené série: ${bbSetsConfirmed}/10.` : "",
+          ].join("")
+        : "";
     const entry = saveLiveWorkoutLog({
       sportCategory: sport,
       wodKey: freeWorkoutMode ? undefined : (wodKey ?? undefined),
       wodName: sessionLabel,
       durationSec,
       repsCompleted: completedReps,
-      repsTarget: target >= UNCAPPED_REPS_THRESHOLD ? 0 : target,
+      repsTarget:
+        sport === "bodybuilding" && bbProgram
+          ? BB_TARGET_REPS
+          : target >= UNCAPPED_REPS_THRESHOLD
+            ? 0
+            : target,
       notes: [
         `Živý trénink — ${sessionLabel}. Čas ${formatElapsed(elapsedMs)}.`,
         loadTrim ? ` Použité váhy / škálování: ${loadTrim}.` : "",
@@ -440,20 +536,47 @@ export function LiveTrainingFlow() {
         freeSetSummary ? ` Série Free Workout: ${freeSetSummary}.` : "",
         hyroxSetupSummary,
         hyroxSummary ? ` Kroky HYROX: ${hyroxSummary}.` : "",
+        bbNotes,
       ].join(""),
-      loadUsed: loadTrim || undefined,
+      loadUsed: loadTrim || bbWeightKg.trim() || undefined,
     });
     setSaveMessage(
       `Uloženo lokálně (${entry.wodName}, ${formatElapsed(elapsedMs)}). Doplň hlavní záznam tréninku v Importech nebo v Trénink.`,
     );
     resetSession();
     setWodKey(null);
+    setBbProgram(null);
+    setBbEquipmentIds([]);
+    setBbMuscleGroup("");
+    setBbExercise("");
+    setBbWeightKg("");
     void fetch("/api/live-workout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(entry),
     }).catch(() => undefined);
-  }, [sport, userLoadInput, bearRoundWeights, freeWorkoutMode, freeWorkoutSets, hyroxVariant, hyroxLog, hyroxSetup, wod, wodKey, elapsedMs, completedReps, target]);
+  }, [
+    sport,
+    userLoadInput,
+    bearRoundWeights,
+    freeWorkoutMode,
+    freeWorkoutSets,
+    hyroxVariant,
+    hyroxLog,
+    hyroxSetup,
+    wod,
+    wodKey,
+    elapsedMs,
+    completedReps,
+    target,
+    bbProgram,
+    bbEquipmentIds,
+    bbMuscleGroup,
+    bbExercise,
+    bbWeightKg,
+    bbSetsConfirmed,
+    bbRestVariant,
+  ]);
 
   const openActive = () => {
     if (!wod && !hyroxVariant) return;
@@ -472,12 +595,27 @@ export function LiveTrainingFlow() {
     setActiveOpen(true);
   };
 
+  const openBodybuildingLive = () => {
+    if (!bbProgram || !bbMuscleGroup.trim() || !bbExercise.trim()) return;
+    setCompletedReps(0);
+    undoLast.current = [];
+    startedAtRef.current = null;
+    setElapsedMs(0);
+    setRunning(false);
+    setBbSetsConfirmed(0);
+    setBbSetBaselineReps(0);
+    setRestEndsAt(null);
+    setActiveOpen(true);
+  };
+
+  const bbExerciseOptions = bbMuscleGroup ? BODYBUILDING_MUSCLE_GROUPS[bbMuscleGroup] ?? [] : [];
+
   const sportOptions = useMemo(
     () =>
       [
         { id: "crossfit" as const, label: "CrossFit", hint: "Benchmark nebo Open" },
         { id: "hyrox" as const, label: "HYROX", hint: "4 domácí varianty + krokový tracker" },
-        { id: "bodybuilding" as const, label: "Bodybuilding", hint: "brzy: série a váhy" },
+        { id: "bodybuilding" as const, label: "Bodybuilding", hint: "1×100, 10×10, partie, cviky" },
         { id: "bodyweight" as const, label: "Bodyweight", hint: "Girl / benchmark bez činky" },
       ] as const,
     [],
@@ -499,6 +637,11 @@ export function LiveTrainingFlow() {
                 setWodKey(null);
                 setFreeWorkoutMode(false);
                 setHyroxVariantKey(null);
+                setBbProgram(null);
+                setBbEquipmentIds([]);
+                setBbMuscleGroup("");
+                setBbExercise("");
+                setBbWeightKg("");
                 resetSession();
               }}
               className={`rounded-lg border px-4 py-2 text-sm transition ${
@@ -812,9 +955,165 @@ export function LiveTrainingFlow() {
       )}
 
       {sport === "bodybuilding" && (
-        <section className="rounded-xl border border-dashed border-ew-border bg-ew-bg p-6 text-sm text-ew-muted">
-          Režim <strong className="text-zinc-300">Bodybuilding</strong> připravíme v další verzi (série, váhy, odpočinek).
-          Zatím použij záložku Trénink nebo Importy.
+        <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
+          <h3 className="text-base font-semibold text-zinc-100">2. Bodybuilding — typ a nastavení</h3>
+          <p className="mb-3 text-xs text-ew-muted">
+            Vyber formát, nářadí, svalovou partii a cvik. Časovač a počítadlo (+1 / +3 / +5 / +10) jako u CrossFit. U 10×10 po
+            každé sérii potvrď dokončení — u pauzy 30 s a 1 min poběží odpočet.
+          </p>
+
+          <p className="mb-2 text-xs font-medium text-zinc-400">Formát</p>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {(
+              [
+                { key: "1x100" as const, title: "1×100", desc: "100 op. v sérii / bloku" },
+                { key: "10x10" as const, title: "10×10", desc: "10 sérií × 10 op." },
+              ] as const
+            ).map((row) => (
+              <button
+                key={row.key}
+                type="button"
+                onClick={() => {
+                  setBbProgram(row.key);
+                  setActiveOpen(false);
+                }}
+                className={`rounded-lg border px-3 py-2 text-left text-sm ${
+                  bbProgram === row.key
+                    ? "border-ew-blue-light bg-ew-bg text-white"
+                    : "border-ew-border text-zinc-300 hover:border-zinc-500"
+                }`}
+              >
+                <span className="font-semibold">{row.title}</span>
+                <span className="ml-2 text-xs text-ew-muted">{row.desc}</span>
+              </button>
+            ))}
+          </div>
+
+          {bbProgram === "10x10" && (
+            <div className="mb-4 rounded-lg border border-ew-border bg-ew-bg p-3">
+              <p className="mb-2 text-xs font-medium text-zinc-400">Pauza mezi sériemi (po potvrzení)</p>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { id: "manual10" as const, label: "10 s", sub: "bez odpočtu v aplikaci" },
+                    { id: "count30" as const, label: "30 s", sub: "odpočet" },
+                    { id: "count60" as const, label: "1 min", sub: "odpočet" },
+                  ] as const
+                ).map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setBbRestVariant(opt.id)}
+                    className={`rounded-lg border px-3 py-2 text-sm ${
+                      bbRestVariant === opt.id
+                        ? "border-amber-500/60 bg-amber-950/30 text-amber-100"
+                        : "border-ew-border text-zinc-400 hover:border-zinc-500"
+                    }`}
+                  >
+                    {opt.label}
+                    <span className="ml-1 text-xs text-ew-muted">{opt.sub}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mb-4 grid gap-3 lg:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-zinc-400" htmlFor="bb-muscle">
+                Svalová partie
+              </label>
+              <select
+                id="bb-muscle"
+                value={bbMuscleGroup}
+                onChange={(e) => {
+                  const m = e.target.value;
+                  setBbMuscleGroup(m);
+                  const list = BODYBUILDING_MUSCLE_GROUPS[m] ?? [];
+                  setBbExercise(list[0] ?? "");
+                }}
+                className="w-full rounded-lg border border-ew-border bg-ew-bg px-3 py-2 text-sm text-white"
+              >
+                <option value="">— zvol partii —</option>
+                {BODYBUILDING_MUSCLE_ORDER.map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-zinc-400" htmlFor="bb-exercise">
+                Cvik
+              </label>
+              <select
+                id="bb-exercise"
+                value={bbExercise}
+                onChange={(e) => setBbExercise(e.target.value)}
+                disabled={!bbMuscleGroup}
+                className="w-full rounded-lg border border-ew-border bg-ew-bg px-3 py-2 text-sm text-white disabled:opacity-40"
+              >
+                <option value="">— zvol cvik —</option>
+                {bbExerciseOptions.map((ex) => (
+                  <option key={ex} value={ex}>
+                    {ex}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="mb-4">
+            <label className="mb-1 block text-xs font-medium text-zinc-400" htmlFor="bb-weight">
+              Váha (kg) — volitelné
+            </label>
+            <input
+              id="bb-weight"
+              type="text"
+              inputMode="decimal"
+              value={bbWeightKg}
+              onChange={(e) => setBbWeightKg(e.target.value)}
+              placeholder="např. 60"
+              className={`${formInputClass} max-w-xs`}
+              autoComplete="off"
+            />
+          </div>
+
+          <div className="mb-4">
+            <p className="mb-2 text-xs font-medium text-zinc-400">Nářadí (lze více)</p>
+            <div className="flex flex-wrap gap-2">
+              {BODYBUILDING_EQUIPMENT.map((eq) => {
+                const on = bbEquipmentIds.includes(eq.id);
+                return (
+                  <button
+                    key={eq.id}
+                    type="button"
+                    onClick={() => toggleBbEquipment(eq.id)}
+                    className={`rounded-full border px-3 py-1.5 text-xs transition ${
+                      on
+                        ? "border-sky-500/70 bg-sky-950/40 text-sky-100"
+                        : "border-ew-border text-zinc-400 hover:border-zinc-500"
+                    }`}
+                  >
+                    {eq.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {bbProgram && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={openBodybuildingLive}
+                disabled={!bbMuscleGroup.trim() || !bbExercise.trim()}
+                className="rounded-md bg-ew-blue px-3 py-2 text-sm text-white hover:bg-ew-blue-dark disabled:opacity-40"
+              >
+                Spustit čas + počítadlo
+              </button>
+            </div>
+          )}
         </section>
       )}
 
@@ -887,7 +1186,7 @@ export function LiveTrainingFlow() {
         </div>
       )}
 
-      {activeOpen && (wod || hyroxVariant) && (
+      {activeOpen && (wod || hyroxVariant || (sport === "bodybuilding" && bbProgram)) && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
           role="dialog"
@@ -898,6 +1197,30 @@ export function LiveTrainingFlow() {
             <h3 id="live-session-title" className="text-lg font-semibold text-white">
               {sessionName} — živý průběh
             </h3>
+            {sport === "bodybuilding" && bbProgram && (
+              <div className="mt-3 rounded-lg border border-violet-500/25 bg-violet-950/20 px-3 py-3 text-sm text-zinc-300">
+                <p>
+                  <span className="font-semibold text-violet-300">Partie:</span> {bbMuscleGroup || "—"}
+                </p>
+                <p className="mt-1">
+                  <span className="font-semibold text-violet-300">Cvik:</span> {bbExercise || "—"}
+                </p>
+                {bbWeightKg.trim() ? (
+                  <p className="mt-1">
+                    <span className="font-semibold text-violet-300">Váha:</span> {bbWeightKg.trim()} kg
+                  </p>
+                ) : null}
+                {bbEquipmentIds.length > 0 ? (
+                  <p className="mt-1 text-xs text-zinc-400">
+                    <span className="font-semibold text-zinc-500">Nářadí:</span>{" "}
+                    {bbEquipmentIds
+                      .map((id) => BODYBUILDING_EQUIPMENT.find((e) => e.id === id)?.label)
+                      .filter(Boolean)
+                      .join(", ")}
+                  </p>
+                ) : null}
+              </div>
+            )}
             {sport === "crossfit" && wod && (
               <CrossfitLoadBlock
                 wod={wod}
@@ -909,64 +1232,112 @@ export function LiveTrainingFlow() {
 
             {!hyroxVariant &&
               (() => {
-              if (!wod) return null;
-              const detail = repProgressDetail(wod, completedReps);
-              const showBigFraction =
-                target > 0 && target < UNCAPPED_REPS_THRESHOLD && !hideRepRemaining;
-              const subline =
-                detail ?? (!showBigFraction ? segmentLabel(wod, completedReps) : null);
-              return (
-                <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div className="rounded-xl border border-ew-border bg-ew-panel p-4 text-center">
-                    <p className="text-xs text-ew-muted">Čas (od startu)</p>
-                    <p className="font-mono text-4xl font-bold text-white tabular-nums">
-                      {formatElapsed(elapsedMs)}
-                    </p>
-                    <div className="mt-3 flex flex-wrap justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={startTimer}
-                        disabled={running}
-                        className="rounded-md bg-emerald-600 px-4 py-2 text-sm text-white disabled:opacity-40"
-                      >
-                        Zahájit / pokračovat v čase
-                      </button>
-                      <button
-                        type="button"
-                        onClick={pauseTimer}
-                        disabled={!running}
-                        className="rounded-md border border-ew-border px-4 py-2 text-sm text-zinc-200 disabled:opacity-40"
-                      >
-                        Pauza
-                      </button>
+                const bbLive = sport === "bodybuilding" && bbProgram;
+                if (!wod && !bbLive) return null;
+                const repTarget = bbLive ? BB_TARGET_REPS : wod ? totalTargetReps(wod) : 0;
+                const repRem = Math.max(0, repTarget - completedReps);
+                const detail = wod ? repProgressDetail(wod, completedReps) : null;
+                const showBigFraction =
+                  repTarget > 0 && repTarget < UNCAPPED_REPS_THRESHOLD && (bbLive || !hideRepRemaining);
+                const subline = bbLive
+                  ? bbProgram === "10x10"
+                    ? `Součet: ${completedReps} / ${BB_TARGET_REPS} · Série potvrzeno: ${bbSetsConfirmed}/10 · v této sérii: ${completedReps - bbSetBaselineReps}/10`
+                    : `${completedReps} / ${BB_TARGET_REPS}`
+                  : detail ?? (!showBigFraction && wod ? segmentLabel(wod, completedReps) : null);
+                return (
+                  <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="rounded-xl border border-ew-border bg-ew-panel p-4 text-center">
+                      <p className="text-xs text-ew-muted">Čas (od startu)</p>
+                      <p className="font-mono text-4xl font-bold text-white tabular-nums">
+                        {formatElapsed(elapsedMs)}
+                      </p>
+                      <div className="mt-3 flex flex-wrap justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={startTimer}
+                          disabled={running}
+                          className="rounded-md bg-emerald-600 px-4 py-2 text-sm text-white disabled:opacity-40"
+                        >
+                          Zahájit / pokračovat v čase
+                        </button>
+                        <button
+                          type="button"
+                          onClick={pauseTimer}
+                          disabled={!running}
+                          className="rounded-md border border-ew-border px-4 py-2 text-sm text-zinc-200 disabled:opacity-40"
+                        >
+                          Pauza
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-ew-border bg-ew-panel p-4 text-center">
+                      <p className="text-xs text-ew-muted">Počítadlo</p>
+                      {showBigFraction ? (
+                        <>
+                          <p className="font-mono text-4xl font-bold text-white tabular-nums">
+                            {completedReps}
+                            <span className="text-zinc-500"> / </span>
+                            {repTarget}
+                          </p>
+                          {repRem > 0 && (
+                            <p className="mt-1 text-2xl font-semibold tabular-nums text-sky-400/95">
+                              zbývá {repRem}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="font-mono text-4xl font-bold text-white tabular-nums">{completedReps}</p>
+                      )}
+                      {subline && (
+                        <p className="mt-3 text-sm leading-snug text-zinc-400">{subline}</p>
+                      )}
                     </div>
                   </div>
+                );
+              })()}
 
-                  <div className="rounded-xl border border-ew-border bg-ew-panel p-4 text-center">
-                    <p className="text-xs text-ew-muted">Počítadlo</p>
-                    {showBigFraction ? (
-                      <>
-                        <p className="font-mono text-4xl font-bold text-white tabular-nums">
-                          {completedReps}
-                          <span className="text-zinc-500"> / </span>
-                          {target}
-                        </p>
-                        {remaining > 0 && (
-                          <p className="mt-1 text-2xl font-semibold tabular-nums text-sky-400/95">
-                            zbývá {remaining}
-                          </p>
-                        )}
-                      </>
-                    ) : (
-                      <p className="font-mono text-4xl font-bold text-white tabular-nums">{completedReps}</p>
-                    )}
-                    {subline && (
-                      <p className="mt-3 text-sm leading-snug text-zinc-400">{subline}</p>
-                    )}
+            {sport === "bodybuilding" && bbProgram === "10x10" && (
+              <div className="mt-4 space-y-3 rounded-xl border border-amber-500/30 bg-amber-950/20 p-4">
+                {restEndsAt != null && bbRestVariant !== "manual10" && (
+                  <div className="rounded-lg border border-amber-500/40 bg-ew-panel px-4 py-3 text-center">
+                    <p className="text-xs font-medium uppercase tracking-wide text-amber-200/90">Pauza mezi sériemi</p>
+                    <p className="mt-1 font-mono text-4xl font-bold tabular-nums text-amber-100">
+                      {formatElapsed(restRemainingMs)}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={skipRestCountdown}
+                      className="mt-3 rounded-md border border-amber-500/50 px-3 py-1.5 text-sm text-amber-100 hover:bg-amber-950/50"
+                    >
+                      Přeskočit pauzu
+                    </button>
                   </div>
-                </div>
-              );
-            })()}
+                )}
+                {bbRestVariant === "manual10" && bbSetsConfirmed < 10 && (
+                  <p className="text-center text-xs text-zinc-500">
+                    Pauza cca 10 s — čas si hlídáš sám; po dokončení 10 op. v sérii potvrď níže.
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={confirmTenByTenSet}
+                  disabled={
+                    restEndsAt != null ||
+                    bbSetsConfirmed >= 10 ||
+                    completedReps - bbSetBaselineReps < 10
+                  }
+                  className="w-full rounded-lg bg-amber-700 px-4 py-3 text-sm font-semibold text-white disabled:opacity-40"
+                >
+                  Potvrdit dokončení série ({completedReps - bbSetBaselineReps}/10 op. v této sérii)
+                </button>
+                {completedReps - bbSetBaselineReps < 10 && bbSetsConfirmed < 10 && (
+                  <p className="text-center text-xs text-zinc-500">
+                    Přičti opakování tlačítky +1…+10, až bude v aktuální sérii alespoň 10 od posledního potvrzení.
+                  </p>
+                )}
+              </div>
+            )}
 
             {hyroxVariant && (
               <div className="mt-4 space-y-3 rounded-xl border border-ew-border bg-ew-panel p-3">

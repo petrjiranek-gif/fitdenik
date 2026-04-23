@@ -322,6 +322,48 @@ export function ImportsCenter() {
     [repositories, useSupabase],
   );
 
+  const persistNutritionFromParsed = useCallback(
+    async (data: ParsedData): Promise<{ ok: true } | { ok: false; error: string }> => {
+      const nutritionPayload: Omit<NutritionEntry, "id"> = {
+        userId: "u1",
+        date: String(data.date ?? new Date().toISOString().slice(0, 10)),
+        calories: parseLocaleNumber(data.calories),
+        protein: parseLocaleNumber(data.protein),
+        carbs: parseLocaleNumber(data.carbs),
+        fat: parseLocaleNumber(data.fat),
+        fiber: parseLocaleNumber(data.fiber),
+        waterLiters: parseLocaleNumber(data.waterLiters),
+        bodyWeightKg: parseLocaleNumber(data.bodyWeightKg),
+        notes: String(data.notes ?? "Vytvořeno z importu screenshotu"),
+      };
+      if (useSupabase) {
+        const response = await fetch("/api/nutrition", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(nutritionPayload),
+        });
+        if (!response.ok) {
+          const result = (await response.json()) as { error?: string };
+          return { ok: false, error: result.error ?? "Nepodařilo se zapsat výživu." };
+        }
+        return { ok: true };
+      }
+      repositories.nutrition.create({
+        date: nutritionPayload.date,
+        calories: nutritionPayload.calories,
+        protein: nutritionPayload.protein,
+        carbs: nutritionPayload.carbs,
+        fat: nutritionPayload.fat,
+        fiber: nutritionPayload.fiber,
+        waterLiters: nutritionPayload.waterLiters,
+        bodyWeightKg: nutritionPayload.bodyWeightKg,
+        notes: nutritionPayload.notes,
+      });
+      return { ok: true };
+    },
+    [repositories, useSupabase],
+  );
+
   const onSaveImport = async () => {
     setErrorMessage(null);
     setMessage(null);
@@ -358,7 +400,13 @@ export function ImportsCenter() {
       return;
     }
 
-    setMessage("Import uložen.");
+    const n = await persistNutritionFromParsed(parsedData);
+    if (!n.ok) {
+      setMessage("Import uložen.");
+      setErrorMessage(`Výživa se nepodařila zapsat do deníku: ${n.error}`);
+      return;
+    }
+    setMessage("Import uložen a výživa je zapsaná v záložce Výživa.");
   };
 
   const onConvert = async () => {
@@ -374,34 +422,9 @@ export function ImportsCenter() {
       return;
     }
 
-    const nutritionPayload: Omit<NutritionEntry, "id"> = {
-      userId: "u1",
-      date: String(parsedData.date ?? new Date().toISOString().slice(0, 10)),
-      calories: Number(parsedData.calories ?? 0),
-      protein: Number(parsedData.protein ?? 0),
-      carbs: Number(parsedData.carbs ?? 0),
-      fat: Number(parsedData.fat ?? 0),
-      fiber: Number(parsedData.fiber ?? 0),
-      waterLiters: Number(
-        parsedData.waterLiters === "" || parsedData.waterLiters === undefined
-          ? 0
-          : parsedData.waterLiters,
-      ),
-      bodyWeightKg: Number(
-        parsedData.bodyWeightKg === "" || parsedData.bodyWeightKg === undefined
-          ? 0
-          : parsedData.bodyWeightKg,
-      ),
-      notes: String(parsedData.notes ?? "Vytvořeno z importu screenshotu"),
-    };
-    const response = await fetch("/api/nutrition", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(nutritionPayload),
-    });
-    if (!response.ok) {
-      const result = (await response.json()) as { error?: string };
-      setErrorMessage(result.error ?? "Nepodařilo se vytvořit výživu z importu.");
+    const n = await persistNutritionFromParsed(parsedData);
+    if (!n.ok) {
+      setErrorMessage(n.error);
       return;
     }
     setMessage("Výživa vytvořena z importu.");
@@ -421,6 +444,18 @@ export function ImportsCenter() {
       return;
     }
     setMessage(`Trénink zapsán do deníku (podle importu „${item.image_name}“).`);
+  };
+
+  const onWriteNutritionFromSavedImport = async (item: ImportRecord) => {
+    if (item.import_target !== "nutrition") return;
+    setErrorMessage(null);
+    setMessage(null);
+    const n = await persistNutritionFromParsed(item.parsed_json as ParsedData);
+    if (!n.ok) {
+      setErrorMessage(n.error);
+      return;
+    }
+    setMessage(`Výživa zapsána do deníku (podle importu „${item.image_name}“).`);
   };
 
   const onDeleteImport = async (id: string) => {
@@ -587,7 +622,7 @@ export function ImportsCenter() {
       <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
         <h3 className="mb-2 text-base font-semibold">Poslední importy</h3>
         <p className="mb-3 text-xs text-zinc-500">
-          U importů <span className="text-zinc-400">trénink</span> můžeš jedním klikem doplnit záznam do záložky Trénink — použijí se uložená pole z daného importu (vhodné pro starší importy před automatickým zápisem).
+          U importů můžeš jedním klikem doplnit záznam do deníku (Trénink nebo Výživa). Použijí se uložená pole z daného importu.
         </p>
         <div className="space-y-2 text-sm">
           {savedImports.slice(0, 30).map((item) => {
@@ -631,6 +666,15 @@ export function ImportsCenter() {
                         className="rounded border border-ew-border bg-ew-bg px-2 py-1 text-xs text-ew-blue-light hover:border-ew-blue-light disabled:opacity-50"
                       >
                         {writingTrainingFromImportId === item.id ? "Zapisuji…" : "Zapsat do deníku"}
+                      </button>
+                    )}
+                    {item.import_target === "nutrition" && (
+                      <button
+                        type="button"
+                        onClick={() => void onWriteNutritionFromSavedImport(item)}
+                        className="rounded border border-ew-border bg-ew-bg px-2 py-1 text-xs text-ew-blue-light hover:border-ew-blue-light"
+                      >
+                        Zapsat do výživy
                       </button>
                     )}
                     <button

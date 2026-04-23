@@ -10,7 +10,7 @@ export function Header() {
     pathname === "/progress" ||
     pathname?.startsWith("/training");
   const hideImportLink = pathname === "/baseline";
-  const hideNewMeasurementLink = pathname === "/imports";
+  const hideNewMeasurementLink = pathname === "/imports" || pathname === "/nutrition";
 
   return (
     <header className="sticky top-0 z-10 border-b border-ew-border bg-ew-panel/95 px-4 py-3 backdrop-blur">

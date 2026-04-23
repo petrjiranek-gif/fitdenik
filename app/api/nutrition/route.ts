@@ -90,12 +90,40 @@ export async function POST(request: Request) {
     .select("*")
     .single();
 
-  if (error) {
-    return NextResponse.json(
-      { error: `Chyba při ukládání výživy: ${error.message}` },
-      { status: 500 },
-    );
+  if (!error) {
+    return NextResponse.json({ entry: toEntry(data as NutritionRow) }, { status: 201 });
   }
 
-  return NextResponse.json({ entry: toEntry(data as NutritionRow) }, { status: 201 });
+  // Pokud už pro daný den existuje záznam (unikátní klíč user+date),
+  // přepiš jej importem / novým vstupem místo pádu.
+  if (/duplicate key|unique/i.test(error.message)) {
+    const { data: updated, error: updateError } = await supabase
+      .from("nutrition_entries")
+      .update({
+        calories: insertPayload.calories,
+        protein: insertPayload.protein,
+        carbs: insertPayload.carbs,
+        fat: insertPayload.fat,
+        fiber: insertPayload.fiber,
+        water_liters: insertPayload.water_liters,
+        body_weight_kg: insertPayload.body_weight_kg,
+        notes: insertPayload.notes,
+      })
+      .eq("user_id", insertPayload.user_id)
+      .eq("date", insertPayload.date)
+      .select("*")
+      .single();
+    if (updateError) {
+      return NextResponse.json(
+        { error: `Chyba při aktualizaci výživy: ${updateError.message}` },
+        { status: 500 },
+      );
+    }
+    return NextResponse.json({ entry: toEntry(updated as NutritionRow), updated: true }, { status: 200 });
+  }
+
+  return NextResponse.json(
+    { error: `Chyba při ukládání výživy: ${error.message}` },
+    { status: 500 },
+  );
 }

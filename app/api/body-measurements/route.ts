@@ -76,3 +76,34 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ entry: toEntry(data as Row) }, { status: 201 });
 }
+
+export async function DELETE(request: Request) {
+  const supabase = getSupabaseServerClient();
+  if (!supabase) {
+    return NextResponse.json({ error: "Supabase není nakonfigurován." }, { status: 503 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get("id");
+  if (!id) {
+    return NextResponse.json({ error: "Chybí id měření pro smazání." }, { status: 400 });
+  }
+
+  const uid = getFitdenikUserId();
+  const { data, error } = await supabase
+    .from("body_measurement_entries")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", uid)
+    .select("id");
+
+  if (error) {
+    return NextResponse.json({ error: `Smazání měření: ${error.message}` }, { status: 500 });
+  }
+
+  if (!data?.length) {
+    return NextResponse.json({ error: "Měření nebylo nalezeno nebo nemáš oprávnění ho smazat." }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true });
+}

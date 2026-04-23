@@ -290,7 +290,37 @@ export function CrossfitMastersPanel() {
           <span className={mastersStatusClass(mastersStats.sessionsStatus)}>{mastersStatusLabel(mastersStats.sessionsStatus)}</span>
         </p>
       </div>
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="rounded-lg border border-ew-border bg-ew-bg p-3">
+          <p className="text-xs text-ew-muted">CrossFit tréninků / 30 dní</p>
+          <p className="mt-1 text-xl font-semibold text-white">{mastersStats.sessionCount}</p>
+          <p className="mt-1 text-xs text-ew-muted">
+            ~{mastersStats.weeklyRate.toFixed(1)} týdně · cíl {mastersStats.ref.sessionsPerWeekMin}+
+          </p>
+          <p className={`mt-1 text-xs font-medium ${mastersStatusClass(mastersStats.sessionsStatus)}`}>
+            {mastersStatusLabel(mastersStats.sessionsStatus)}
+          </p>
+        </div>
+        <div className="rounded-lg border border-ew-border bg-ew-bg p-3">
+          <p className="text-xs text-ew-muted">Průměr kcal/min (CrossFit)</p>
+          <p className="mt-1 text-xl font-semibold text-white">{mastersStats.avgKpm.toFixed(1)}</p>
+          <p className="mt-1 text-xs text-ew-muted">
+            cíl {mastersStats.ref.kcalPerMinMin.toFixed(1)}–{mastersStats.ref.kcalPerMinGood.toFixed(1)}+
+          </p>
+        </div>
+        <div className="rounded-lg border border-ew-border bg-ew-bg p-3">
+          <p className="text-xs text-ew-muted">Nejlepší kcal/min (30 dní)</p>
+          <p className="mt-1 text-xl font-semibold text-white">{mastersStats.bestKpm.toFixed(1)}</p>
+          <p className="mt-1 text-xs text-ew-muted">Top intenzita jednoho tréninku</p>
+        </div>
+        <div className="rounded-lg border border-ew-border bg-ew-bg p-3">
+          <p className="text-xs text-ew-muted">Celkový čas CrossFit (30 dní)</p>
+          <p className="mt-1 text-xl font-semibold text-white">{mastersStats.totalMin} min</p>
+          <p className="mt-1 text-xs text-ew-muted">Objem v aktuálním měsíčním okně</p>
+        </div>
+      </div>
+
+      <div className="mt-4 mb-4 flex flex-wrap gap-2">
         {CROSSFIT_MASTERS_WORKOUTS.map((w) => (
           <button
             key={w.id}
@@ -306,17 +336,70 @@ export function CrossfitMastersPanel() {
           </button>
         ))}
       </div>
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <input type="date" value={mastersDate} onChange={(e) => setMastersDate(e.target.value)} className={formInputClass} />
-        <input
-          value={mastersResultValue}
-          onChange={(e) => setMastersResultValue(e.target.value)}
-          placeholder={selectedMastersWorkout.scoreMode === "for_time" ? "Výsledek (mm:ss)" : "Výsledek (kg)"}
-          className={formInputClass}
-        />
-        <input value={mastersScaling} onChange={(e) => setMastersScaling(e.target.value)} placeholder="Scaling / váha" className={formInputClass} />
-        <input value={mastersNotes} onChange={(e) => setMastersNotes(e.target.value)} placeholder="Poznámka" className={formInputClass} />
+
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+        <div className="rounded-lg border border-ew-border bg-ew-bg p-3">
+          <h4 className="text-sm font-semibold text-zinc-100">{selectedMastersWorkout.name}</h4>
+          <p className="mt-1 text-xs text-zinc-300">{selectedMastersWorkout.description}</p>
+          <p className="mt-2 text-xs text-zinc-400">
+            <span className="font-semibold text-zinc-300">Předpis:</span> {selectedMastersWorkout.prescription}
+          </p>
+          <p className="mt-2 text-xs text-zinc-400">
+            <span className="font-semibold text-zinc-300">Nářadí:</span> {selectedMastersWorkout.equipment.join(", ")}
+          </p>
+          <p className="mt-2 text-xs text-zinc-500">
+            <span className="font-semibold text-zinc-400">Scaling tip:</span> {selectedMastersWorkout.defaultScaling}
+          </p>
+          <ul className="mt-3 space-y-1 text-xs text-zinc-400">
+            {selectedMastersWorkout.movementNotes.map((n, idx) => (
+              <li key={`${selectedMastersWorkout.id}-note-${idx}`}>• {n}</li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="rounded-lg border border-ew-border bg-ew-bg p-3">
+          <h4 className="text-sm font-semibold text-zinc-100">Vstup výsledku</h4>
+          <p className="mt-1 text-xs text-ew-muted">
+            {selectedMastersWorkout.scoreMode === "for_time"
+              ? "Formát času: mm:ss (nebo hh:mm:ss). U silových benchmarků zadej kg."
+              : "Zadej maximální dosaženou váhu v kg (může být desetinná)."}
+          </p>
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            <label className="grid gap-1 text-xs text-zinc-400">
+              Datum
+              <input type="date" value={mastersDate} onChange={(e) => setMastersDate(e.target.value)} className={formInputClass} />
+            </label>
+            <label className="grid gap-1 text-xs text-zinc-400">
+              Výsledek ({selectedMastersWorkout.scoreUnitHint})
+              <input
+                value={mastersResultValue}
+                onChange={(e) => setMastersResultValue(e.target.value)}
+                placeholder={selectedMastersWorkout.scoreMode === "for_time" ? "např. 5:42" : "např. 92.5"}
+                className={formInputClass}
+              />
+            </label>
+            <label className="grid gap-1 text-xs text-zinc-400">
+              Scaling / váha / split
+              <input
+                value={mastersScaling}
+                onChange={(e) => setMastersScaling(e.target.value)}
+                placeholder="např. 43 kg, banded, split 7-7-7"
+                className={formInputClass}
+              />
+            </label>
+            <label className="grid gap-1 text-xs text-zinc-400">
+              Poznámka
+              <input
+                value={mastersNotes}
+                onChange={(e) => setMastersNotes(e.target.value)}
+                placeholder="RPE, technika, pacing..."
+                className={formInputClass}
+              />
+            </label>
+          </div>
+        </div>
       </div>
+
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -329,8 +412,46 @@ export function CrossfitMastersPanel() {
         {currentPreview && <span className="text-sm text-emerald-300">{currentPreview.message}</span>}
         {mastersError && <span className="text-sm text-rose-300">{mastersError}</span>}
       </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="rounded-md border border-ew-border bg-ew-bg p-3">
+          <p className="text-xs text-ew-muted">Pokusů celkem</p>
+          <p className="mt-1 text-lg font-semibold text-white">{mastersHistory.all.length}</p>
+        </div>
+        <div className="rounded-md border border-ew-border bg-ew-bg p-3">
+          <p className="text-xs text-ew-muted">Osobní maximum</p>
+          <p className="mt-1 text-lg font-semibold text-white">
+            {mastersHistory.best ? fmtComparable(selectedMastersWorkout, mastersHistory.best.comp) : "—"}
+          </p>
+        </div>
+        <div className="rounded-md border border-ew-border bg-ew-bg p-3">
+          <p className="text-xs text-ew-muted">Poslední výkon</p>
+          <p className="mt-1 text-lg font-semibold text-white">{mastersHistory.all[0]?.resultValue ?? "—"}</p>
+          {mastersHistory.recentDelta != null && (
+            <p
+              className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px] ${deltaBadgeClass(
+                mastersHistory.recentDelta < 0 ? "better" : mastersHistory.recentDelta > 0 ? "worse" : "equal",
+              )}`}
+            >
+              vs předchozí:{" "}
+              {mastersHistory.recentDelta < 0
+                ? `lepší o ${resultDeltaLabel(selectedMastersWorkout, mastersHistory.recentDelta)}`
+                : mastersHistory.recentDelta > 0
+                  ? `horší o ${resultDeltaLabel(selectedMastersWorkout, mastersHistory.recentDelta)}`
+                  : "stejné"}
+            </p>
+          )}
+        </div>
+      </div>
+
       {mastersHistory.trendPoints.length > 1 && (
         <div className="mt-3 rounded-md border border-ew-border bg-ew-bg p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-medium text-zinc-300">Trend výkonu (posledních až 12 pokusů)</p>
+            <p className="text-[11px] text-zinc-500">
+              {selectedMastersWorkout.scoreMode === "for_time" ? "nižší je lepší" : "vyšší je lepší"}
+            </p>
+          </div>
           <svg viewBox="0 0 300 70" className="h-24 w-full rounded bg-ew-panel">
             <polyline
               fill="none"
@@ -353,13 +474,17 @@ export function CrossfitMastersPanel() {
             const direction = delta == null ? null : delta < 0 ? "better" : delta > 0 ? "worse" : "equal";
             return (
               <div key={r.id} className="flex items-center justify-between gap-2 border-b border-ew-border/70 py-1 last:border-0">
-                <span>{r.date}: {r.resultValue}</span>
+                <span>
+                  {r.date}: {r.resultValue}
+                  {r.scaling ? ` · ${r.scaling}` : ""}
+                </span>
                 <div className="flex items-center gap-2">
                   {direction && (
                     <span className={`rounded-full border px-2 py-0.5 text-[10px] ${deltaBadgeClass(direction)}`}>
                       {direction === "better" ? `↑ ${resultDeltaLabel(selectedMastersWorkout, delta!)}` : direction === "worse" ? `↓ ${resultDeltaLabel(selectedMastersWorkout, delta!)}` : "="}
                     </span>
                   )}
+                  <span className="text-zinc-500">{r.resultType}</span>
                 </div>
               </div>
             );

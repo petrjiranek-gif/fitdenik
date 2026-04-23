@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CrossfitMastersPanel } from "@/components/fitdenik/crossfit-masters-panel";
 import {
   BODYWEIGHT_WOD_ORDER,
   CROSSFIT_WOD_ORDER,
@@ -683,6 +684,7 @@ export function LiveTrainingFlow() {
       </section>
 
       {sport === "crossfit" && (
+        <>
         <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
           <h3 className="text-base font-semibold text-zinc-100">2. CrossFit — výběr WOD</h3>
           <p className="mb-3 text-xs text-ew-muted">
@@ -818,6 +820,8 @@ export function LiveTrainingFlow() {
             </div>
           )}
         </section>
+        <CrossfitMastersPanel />
+        </>
       )}
 
       {sport === "hyrox" && (

@@ -17,6 +17,24 @@ type NutritionRow = {
   notes: string;
 };
 
+function toNumber(value: unknown): number {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const raw = String(value ?? "")
+    .trim()
+    .replace(",", ".");
+  if (!raw) return 0;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function toInt(value: unknown): number {
+  return Math.round(toNumber(value));
+}
+
+function toText(value: unknown): string {
+  return String(value ?? "");
+}
+
 function toEntry(row: NutritionRow): NutritionEntry {
   return {
     id: row.id,
@@ -73,15 +91,15 @@ export async function POST(request: Request) {
 
   const insertPayload = {
     user_id: getFitdenikUserId(),
-    date: payload.date,
-    calories: payload.calories,
-    protein: payload.protein,
-    carbs: payload.carbs,
-    fat: payload.fat,
-    fiber: payload.fiber,
-    water_liters: payload.waterLiters,
-    body_weight_kg: payload.bodyWeightKg,
-    notes: payload.notes,
+    date: toText(payload.date),
+    calories: toInt(payload.calories),
+    protein: toInt(payload.protein),
+    carbs: toInt(payload.carbs),
+    fat: toInt(payload.fat),
+    fiber: toInt(payload.fiber),
+    water_liters: toNumber(payload.waterLiters),
+    body_weight_kg: toNumber(payload.bodyWeightKg),
+    notes: toText(payload.notes),
   };
 
   const { data, error } = await supabase

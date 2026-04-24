@@ -172,6 +172,12 @@ function parseNaturalNumber(value: string): number {
   return Math.max(0, Math.round(n));
 }
 
+function parsePositiveDecimal(value: string): number | null {
+  const n = Number(value.replace(",", ".").trim());
+  if (!Number.isFinite(n) || n < 0) return null;
+  return n;
+}
+
 function segmentLabel(wod: LiveWodDefinition, completed: number): string {
   if (wod.key === "angie" || wod.key === "bw_angie") return angieProgressLabel(completed);
   if (wod.key === "andi") return andiProgressLabel(completed);
@@ -280,6 +286,16 @@ export function LiveTrainingFlow() {
   /** Po skončení (nebo přeskočení) pauzy: zvýraznit, že můžeš přidávat op. do další série. */
   const [bbReadyForCurrentSet, setBbReadyForCurrentSet] = useState(false);
   const restLastTickSecRef = useRef<number | null>(null);
+  const [lbInput, setLbInput] = useState("");
+  const [kgInput, setKgInput] = useState("");
+  const [inchInput, setInchInput] = useState("");
+  const [cmInput, setCmInput] = useState("");
+  const [feetInput, setFeetInput] = useState("");
+  const [feetInchInput, setFeetInchInput] = useState("");
+  const [mileInput, setMileInput] = useState("");
+  const [kmInput, setKmInput] = useState("");
+  const [ozInput, setOzInput] = useState("");
+  const [gramInput, setGramInput] = useState("");
 
   const selectedWod = wodKey ? LIVE_WODS[wodKey] : null;
   const wod = freeWorkoutMode ? FREE_WORKOUT_WOD : selectedWod;
@@ -635,6 +651,16 @@ export function LiveTrainingFlow() {
   };
 
   const bbExerciseOptions = getBodybuildingExercisesForMuscle(bbMuscleGroup);
+  const lbValue = parsePositiveDecimal(lbInput);
+  const kgValue = parsePositiveDecimal(kgInput);
+  const inchValue = parsePositiveDecimal(inchInput);
+  const cmValue = parsePositiveDecimal(cmInput);
+  const feetValue = parsePositiveDecimal(feetInput);
+  const feetInchValue = parsePositiveDecimal(feetInchInput);
+  const mileValue = parsePositiveDecimal(mileInput);
+  const kmValue = parsePositiveDecimal(kmInput);
+  const ozValue = parsePositiveDecimal(ozInput);
+  const gramValue = parsePositiveDecimal(gramInput);
 
   const sportOptions = useMemo(
     () =>
@@ -1142,6 +1168,144 @@ export function LiveTrainingFlow() {
           )}
         </section>
       )}
+
+      <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
+        <h3 className="text-base font-semibold text-zinc-100">Přepočet jednotek (US ↔ EU)</h3>
+        <p className="mb-3 text-xs text-ew-muted">
+          Rychlý převod pro zápisy z WOD/benchmarks: libry, palce, stopy a míle.
+        </p>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label className="grid gap-1 text-sm">
+            <span className="text-zinc-400">Libry (lb)</span>
+            <input
+              value={lbInput}
+              onChange={(e) => setLbInput(e.target.value)}
+              placeholder="např. 225"
+              className={formInputClass}
+              inputMode="decimal"
+            />
+            <span className="text-xs text-zinc-500">
+              = {lbValue == null ? "—" : `${(lbValue * 0.45359237).toFixed(2)} kg`}
+            </span>
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-zinc-400">Kilogramy (kg)</span>
+            <input
+              value={kgInput}
+              onChange={(e) => setKgInput(e.target.value)}
+              placeholder="např. 102.5"
+              className={formInputClass}
+              inputMode="decimal"
+            />
+            <span className="text-xs text-zinc-500">
+              = {kgValue == null ? "—" : `${(kgValue * 2.20462262).toFixed(1)} lb`}
+            </span>
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-zinc-400">Palce (in)</span>
+            <input
+              value={inchInput}
+              onChange={(e) => setInchInput(e.target.value)}
+              placeholder="např. 20"
+              className={formInputClass}
+              inputMode="decimal"
+            />
+            <span className="text-xs text-zinc-500">
+              = {inchValue == null ? "—" : `${(inchValue * 2.54).toFixed(1)} cm`}
+            </span>
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-zinc-400">Centimetry (cm)</span>
+            <input
+              value={cmInput}
+              onChange={(e) => setCmInput(e.target.value)}
+              placeholder="např. 50"
+              className={formInputClass}
+              inputMode="decimal"
+            />
+            <span className="text-xs text-zinc-500">
+              = {cmValue == null ? "—" : `${(cmValue / 2.54).toFixed(1)} in`}
+            </span>
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-zinc-400">Výška (ft + in)</span>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                value={feetInput}
+                onChange={(e) => setFeetInput(e.target.value)}
+                placeholder="ft"
+                className={formInputClass}
+                inputMode="decimal"
+              />
+              <input
+                value={feetInchInput}
+                onChange={(e) => setFeetInchInput(e.target.value)}
+                placeholder="in"
+                className={formInputClass}
+                inputMode="decimal"
+              />
+            </div>
+            <span className="text-xs text-zinc-500">
+              ={" "}
+              {feetValue == null || feetInchValue == null
+                ? "—"
+                : `${(feetValue * 30.48 + feetInchValue * 2.54).toFixed(1)} cm`}
+            </span>
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-zinc-400">Míle (mi)</span>
+            <input
+              value={mileInput}
+              onChange={(e) => setMileInput(e.target.value)}
+              placeholder="např. 1"
+              className={formInputClass}
+              inputMode="decimal"
+            />
+            <span className="text-xs text-zinc-500">
+              = {mileValue == null ? "—" : `${(mileValue * 1.609344).toFixed(2)} km`}
+            </span>
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-zinc-400">Kilometry (km)</span>
+            <input
+              value={kmInput}
+              onChange={(e) => setKmInput(e.target.value)}
+              placeholder="např. 5"
+              className={formInputClass}
+              inputMode="decimal"
+            />
+            <span className="text-xs text-zinc-500">
+              = {kmValue == null ? "—" : `${(kmValue / 1.609344).toFixed(2)} mi`}
+            </span>
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-zinc-400">Unce (oz)</span>
+            <input
+              value={ozInput}
+              onChange={(e) => setOzInput(e.target.value)}
+              placeholder="např. 16"
+              className={formInputClass}
+              inputMode="decimal"
+            />
+            <span className="text-xs text-zinc-500">
+              = {ozValue == null ? "—" : `${(ozValue * 28.349523125).toFixed(1)} g`}
+            </span>
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-zinc-400">Gramy (g)</span>
+            <input
+              value={gramInput}
+              onChange={(e) => setGramInput(e.target.value)}
+              placeholder="např. 500"
+              className={formInputClass}
+              inputMode="decimal"
+            />
+            <span className="text-xs text-zinc-500">
+              = {gramValue == null ? "—" : `${(gramValue / 28.349523125).toFixed(2)} oz`}
+            </span>
+          </label>
+        </div>
+      </section>
 
       {prescriptionOpen && wod && !freeWorkoutMode && (
         <div

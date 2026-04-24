@@ -661,6 +661,18 @@ export function LiveTrainingFlow() {
   const kmValue = parsePositiveDecimal(kmInput);
   const ozValue = parsePositiveDecimal(ozInput);
   const gramValue = parsePositiveDecimal(gramInput);
+  const clearUnitConverter = () => {
+    setLbInput("");
+    setKgInput("");
+    setInchInput("");
+    setCmInput("");
+    setFeetInput("");
+    setFeetInchInput("");
+    setMileInput("");
+    setKmInput("");
+    setOzInput("");
+    setGramInput("");
+  };
 
   const sportOptions = useMemo(
     () =>
@@ -1170,10 +1182,21 @@ export function LiveTrainingFlow() {
       )}
 
       <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
-        <h3 className="text-base font-semibold text-zinc-100">Přepočet jednotek (US ↔ EU)</h3>
-        <p className="mb-3 text-xs text-ew-muted">
-          Rychlý převod pro zápisy z WOD/benchmarks: libry, palce, stopy a míle.
-        </p>
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-zinc-100">Přepočet jednotek (US ↔ EU)</h3>
+            <p className="text-xs text-ew-muted">
+              Rychlý převod pro zápisy z WOD/benchmarks: libry, palce, stopy a míle.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={clearUnitConverter}
+            className="rounded-md border border-ew-border bg-ew-bg px-3 py-1.5 text-xs text-zinc-300 transition hover:border-zinc-500 hover:text-white"
+          >
+            Vyčistit pole
+          </button>
+        </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <label className="grid gap-1 text-sm">
             <span className="text-zinc-400">Libry (lb)</span>

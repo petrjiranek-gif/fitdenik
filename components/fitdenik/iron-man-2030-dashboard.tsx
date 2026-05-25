@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formInputClass } from "@/components/fitdenik/form-fields";
@@ -282,9 +283,14 @@ export function IronMan2030Dashboard() {
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-black text-[10px] font-black tracking-tighter text-white">
-                IRONMAN
-              </div>
+              <Image
+                src="/ironman-logo.png"
+                alt="IRONMAN"
+                width={56}
+                height={56}
+                className="h-14 w-14 shrink-0 object-contain"
+                priority
+              />
               <div>
                 <h2 className="text-2xl font-bold text-white">Iron Man 2030</h2>
                 <p className="text-sm italic text-ew-blue-light">{IRON_MAN_MOTTO}</p>

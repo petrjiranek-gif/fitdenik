@@ -18,6 +18,7 @@ export function TrainingSessionCreateForm() {
   const [calories, setCalories] = useState(350);
   const [distanceKm, setDistanceKm] = useState(0);
   const [notes, setNotes] = useState("");
+  const [ironMan2030Project, setIronMan2030Project] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -39,6 +40,7 @@ export function TrainingSessionCreateForm() {
       effort: "střední",
       rpe: 6,
       notes,
+      ironMan2030Project,
     };
 
     try {
@@ -67,6 +69,7 @@ export function TrainingSessionCreateForm() {
           effort: input.effort,
           rpe: input.rpe,
           notes: input.notes,
+          ironMan2030Project: input.ironMan2030Project,
         });
       }
       setTitle("");
@@ -140,6 +143,14 @@ export function TrainingSessionCreateForm() {
           onChange={(e) => setDistanceKm(Number(e.target.value))}
           className={formInputClass}
         />
+      </label>
+      <label className="flex items-center gap-2 text-sm md:col-span-3">
+        <input
+          type="checkbox"
+          checked={ironMan2030Project}
+          onChange={(e) => setIronMan2030Project(e.target.checked)}
+        />
+        <span className="text-zinc-300">Iron Man 2030 projekt</span>
       </label>
       <label className="grid gap-1 text-sm md:col-span-2">
         <span className="text-zinc-400">Poznámka</span>

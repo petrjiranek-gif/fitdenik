@@ -76,6 +76,17 @@ export interface BodyMeasurementEntry {
   notes: string;
 }
 
+/** Disciplína v modulu Iron Man 2030 (volitelné přepsání sportu z deníku). */
+export type IronManDisciplineTag =
+  | "swim"
+  | "scooter"
+  | "gravel"
+  | "nordic_walk"
+  | "run"
+  | "golf"
+  | "crossfit"
+  | "bodybuilding";
+
 export interface TrainingSession {
   id: string;
   userId: string;
@@ -91,6 +102,9 @@ export interface TrainingSession {
   effort: string;
   rpe: number;
   notes: string;
+  /** Označení tréninku jako součást projektu Iron Man 2030. */
+  ironMan2030Project?: boolean;
+  ironManDiscipline?: IronManDisciplineTag;
 }
 
 export interface ExerciseEntry {

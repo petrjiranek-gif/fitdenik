@@ -214,6 +214,7 @@ export function TrainingOverview() {
   });
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [calendarSportFilter, setCalendarSportFilter] = useState<string>("vše");
+  const [ironManFilterOnly, setIronManFilterOnly] = useState(false);
 
   const reloadLocal = useCallback(() => {
     if (!useSupabase) setSessions(repositories.training.list());
@@ -290,14 +291,19 @@ export function TrainingOverview() {
     };
   }, [useSupabase]);
 
+  const filteredSessions = useMemo(
+    () => (ironManFilterOnly ? sessions.filter((s) => s.ironMan2030Project) : sessions),
+    [sessions, ironManFilterOnly],
+  );
+
   const sorted = useMemo(
     () =>
-      [...sessions].sort((a, b) => {
+      [...filteredSessions].sort((a, b) => {
         const at = new Date(`${a.date}T00:00:00`).getTime();
         const bt = new Date(`${b.date}T00:00:00`).getTime();
         return bt - at;
       }),
-    [sessions],
+    [filteredSessions],
   );
 
   useEffect(() => {
@@ -742,7 +748,17 @@ export function TrainingOverview() {
       </section>
 
       <section className="overflow-hidden rounded-xl border border-ew-border bg-ew-panel">
-        <h3 className="border-b border-ew-border bg-ew-bg px-4 py-3 text-base font-semibold text-zinc-100">Všechny tréninky</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-ew-border bg-ew-bg px-4 py-3">
+          <h3 className="text-base font-semibold text-zinc-100">Všechny tréninky</h3>
+          <label className="flex items-center gap-2 text-xs text-zinc-400">
+            <input
+              type="checkbox"
+              checked={ironManFilterOnly}
+              onChange={(e) => setIronManFilterOnly(e.target.checked)}
+            />
+            Jen Iron Man 2030
+          </label>
+        </div>
         <div className="max-h-[min(28rem,70vh)] overflow-auto">
           <table className="w-full border-collapse bg-ew-bg text-sm">
             <thead className="sticky top-0 z-[1] bg-ew-bg text-left text-xs text-ew-muted">
@@ -753,6 +769,7 @@ export function TrainingOverview() {
                 <th className="px-3 py-2 font-medium">Čas</th>
                 <th className="px-3 py-2 font-medium">kcal</th>
                 <th className="px-3 py-2 font-medium">kcal/min</th>
+                <th className="px-3 py-2 font-medium">IM 2030</th>
                 <th className="px-3 py-2 font-medium">Poznámka</th>
                 <th className="px-3 py-2 font-medium" />
               </tr>
@@ -760,7 +777,7 @@ export function TrainingOverview() {
             <tbody className="bg-ew-bg">
               {sorted.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-3 py-8 text-center text-ew-muted">
+                  <td colSpan={9} className="px-3 py-8 text-center text-ew-muted">
                     Zatím nic v deníku.
                   </td>
                 </tr>
@@ -773,6 +790,7 @@ export function TrainingOverview() {
                     <td className="px-3 py-2">{s.durationMin} min</td>
                     <td className="px-3 py-2">{s.calories}</td>
                     <td className="px-3 py-2">{s.durationMin > 0 ? kcalPerMin(s).toFixed(1) : "—"}</td>
+                    <td className="px-3 py-2">{s.ironMan2030Project ? "✓" : "—"}</td>
                     <td className="max-w-[12rem] truncate px-3 py-2 text-ew-muted">{s.notes || "—"}</td>
                     <td className="whitespace-nowrap px-3 py-2">
                       <button
@@ -861,6 +879,7 @@ function EditTrainingModal({
   const [calories, setCalories] = useState(session.calories);
   const [distanceKm, setDistanceKm] = useState(session.distanceKm);
   const [notes, setNotes] = useState(session.notes);
+  const [ironMan2030Project, setIronMan2030Project] = useState(Boolean(session.ironMan2030Project));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal>
@@ -878,9 +897,18 @@ function EditTrainingModal({
               calories,
               distanceKm,
               notes,
+              ironMan2030Project,
             });
           }}
         >
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={ironMan2030Project}
+              onChange={(e) => setIronMan2030Project(e.target.checked)}
+            />
+            <span className="text-zinc-300">Iron Man 2030 projekt</span>
+          </label>
           <label className="grid gap-1 text-sm">
             <span className="text-zinc-400">Datum</span>
             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={formInputClass} />

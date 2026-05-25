@@ -16,12 +16,11 @@ const SIDEBAR_LINKS: NavItem[] = [
   { label: "Trénink", href: "/training" },
   { label: "Živý trénink", href: "/training/live" },
   { label: "Benchmarky", href: "/benchmarks" },
-  { label: "Knihovna workoutů", href: "/workout-library", disabled: true },
+  { label: "Iron Man 2030", href: "/ironman-2030" },
   { label: "Výuková videa", href: "/learning" },
   { label: "Výživa", href: "/nutrition" },
   { label: "Konzultace", href: "/consultations", disabled: true },
   { label: "Importy", href: "/imports" },
-  { label: "Analytika", href: "/analytics", disabled: true },
 ];
 
 export function Sidebar() {

@@ -19,6 +19,8 @@ type TrainingRow = {
   effort: string;
   rpe: number;
   notes: string;
+  iron_man_2030_project?: boolean;
+  iron_man_discipline?: string | null;
 };
 
 function toSession(row: TrainingRow): TrainingSession {
@@ -38,6 +40,8 @@ function toSession(row: TrainingRow): TrainingSession {
     effort: row.effort ?? "",
     rpe: Math.round(Number(row.rpe)) || 0,
     notes: row.notes ?? "",
+    ironMan2030Project: Boolean(row.iron_man_2030_project),
+    ironManDiscipline: row.iron_man_discipline as TrainingSession["ironManDiscipline"],
   };
 }
 
@@ -93,6 +97,8 @@ export async function POST(request: Request) {
     effort: payload.effort,
     rpe: payload.rpe,
     notes: payload.notes,
+    iron_man_2030_project: Boolean(payload.ironMan2030Project),
+    iron_man_discipline: payload.ironManDiscipline ?? null,
   };
 
   const { data, error } = await supabase
@@ -126,7 +132,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Chybí id tréninku." }, { status: 400 });
   }
 
-  const row: Record<string, string | number> = {};
+  const row: Record<string, string | number | boolean | null> = {};
   if (rest.date !== undefined) row.date = rest.date;
   if (rest.sportType !== undefined) row.sport_type = coerceSportType(rest.sportType);
   if (rest.title !== undefined) row.title = rest.title;
@@ -139,6 +145,8 @@ export async function PATCH(request: Request) {
   if (rest.effort !== undefined) row.effort = rest.effort;
   if (rest.rpe !== undefined) row.rpe = Math.round(Number(rest.rpe)) || 0;
   if (rest.notes !== undefined) row.notes = rest.notes;
+  if (rest.ironMan2030Project !== undefined) row.iron_man_2030_project = Boolean(rest.ironMan2030Project);
+  if (rest.ironManDiscipline !== undefined) row.iron_man_discipline = rest.ironManDiscipline ?? null;
 
   if (Object.keys(row).length === 0) {
     return NextResponse.json({ error: "Žádná pole k úpravě." }, { status: 400 });

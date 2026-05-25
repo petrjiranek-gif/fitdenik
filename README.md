@@ -36,6 +36,8 @@ NEXT_PUBLIC_FITDENIK_USER_ID=u1
 
 Nové tabulky pro baseline a měření těla: spusť SQL ze souboru `supabase/migrations/001_baseline_body_measurements.sql` v Supabase SQL Editoru (po tabulkách z training/nutrition/benchmark výše).
 
+Modul **Iron Man 2030**: spusť `supabase/migrations/002_iron_man_2030.sql` (stav modulu + sloupce `iron_man_2030_project` / `iron_man_discipline` na `training_sessions`). API: `GET/PATCH /api/iron-man-2030`, `GET /api/iron-man-2030/summary`. Stránka `/ironman-2030`.
+
 ## Supabase minimal setup (training API)
 
 Pro prvni live endpoint nastav:

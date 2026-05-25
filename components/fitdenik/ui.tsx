@@ -12,3 +12,4 @@ export * from "@/components/fitdenik/nutrition-log";
 export * from "@/components/fitdenik/benchmark-log";
 export * from "@/components/fitdenik/benchmarks-flow";
 export * from "@/components/fitdenik/imports-center";
+export * from "@/components/fitdenik/iron-man-2030-dashboard";

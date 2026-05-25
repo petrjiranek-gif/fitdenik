@@ -100,7 +100,16 @@ export const CALENDAR_DAY_META: Record<
 
 export const WEIGHT_MILESTONES_KG = [127.9, 122.9, 117.9, 112.9, 107.9, 105];
 
+/** Odkazy na YouTube Music — soukromé použití, přehrávání mimo aplikaci. */
 export const IRON_MAN_AUDIO_TRACKS = [
-  { id: "champions", title: "Queen — We Are The Champions", placeholder: true },
-  { id: "mirai", title: "Mirai — Když nemůžeš, přidej víc", placeholder: true },
+  {
+    id: "champions",
+    title: "Queen — We Are The Champions",
+    youtubeMusicUrl: "https://music.youtube.com/watch?v=FWJ1cvltdBo",
+  },
+  {
+    id: "mirai",
+    title: "Mirai — Když nemůžeš, přidej víc",
+    youtubeMusicUrl: "https://music.youtube.com/watch?v=_nALntUtZz0",
+  },
 ] as const;

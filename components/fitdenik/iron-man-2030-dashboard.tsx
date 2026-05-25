@@ -169,7 +169,6 @@ export function IronMan2030Dashboard() {
   const [disciplineMode, setDisciplineMode] = useState<"hours" | "calories">("hours");
   const [calendarMonth, setCalendarMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [calendarDialog, setCalendarDialog] = useState<string | null>(null);
-  const [audioPlaying, setAudioPlaying] = useState<string | null>(null);
   const [openInfo, setOpenInfo] = useState<string | null>("1406");
 
   const persistState = useCallback(
@@ -297,20 +296,21 @@ export function IronMan2030Dashboard() {
             </p>
           </div>
           <div className="flex flex-col gap-2">
+            <p className="text-[10px] text-zinc-500">Motivace · soukromé použití · otevře YouTube Music (bez autoplay)</p>
             {IRON_MAN_AUDIO_TRACKS.map((track) => (
-              <div key={track.id} className="flex items-center gap-2 rounded-lg border border-ew-border bg-ew-bg/60 px-3 py-2">
-                <button
-                  type="button"
-                  className="rounded bg-ew-blue px-2 py-1 text-xs text-white"
-                  onClick={() => setAudioPlaying(audioPlaying === track.id ? null : track.id)}
-                >
-                  {audioPlaying === track.id ? "Pause" : "Play"}
-                </button>
+              <div
+                key={track.id}
+                className="flex flex-wrap items-center gap-2 rounded-lg border border-ew-border bg-ew-bg/60 px-3 py-2"
+              >
                 <span className="flex-1 text-xs text-zinc-300">{track.title}</span>
-                <div className="h-1 w-16 rounded bg-zinc-700">
-                  <div className="h-1 w-0 rounded bg-ew-accent" />
-                </div>
-                <span className="text-[10px] text-zinc-600">placeholder</span>
+                <a
+                  href={track.youtubeMusicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded bg-ew-blue px-2.5 py-1 text-xs text-white hover:bg-ew-blue-dark"
+                >
+                  YouTube Music ↗
+                </a>
               </div>
             ))}
           </div>

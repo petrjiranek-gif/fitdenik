@@ -4,7 +4,17 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { createWorker, PSM } from "tesseract.js";
 import { preprocessImageForOcr } from "@/lib/ocr-preprocess";
+import { LiveWorkoutDetailModal } from "@/components/fitdenik/live-workout-detail-modal";
 import { getRepositories } from "@/lib/repositories/provider";
+import {
+  attachLiveWorkoutToTraining,
+  describeLiveWorkoutEntry,
+} from "@/lib/live-workout/training-link";
+import {
+  findLiveWorkoutById,
+  readLiveWorkoutLogs,
+  type LiveWorkoutLogEntry,
+} from "@/lib/live-workout/persist-log";
 import { coerceSportType, SPORT_TYPE_OPTIONS } from "@/lib/sport-type";
 import type { NutritionEntry, TrainingSession } from "@/lib/types";
 
@@ -161,6 +171,9 @@ export function ImportsCenter() {
   const [deletingImportId, setDeletingImportId] = useState<string | null>(null);
   const [writingTrainingFromImportId, setWritingTrainingFromImportId] = useState<string | null>(null);
   const [openImportDetailId, setOpenImportDetailId] = useState<string | null>(null);
+  const [liveWorkoutLogs, setLiveWorkoutLogs] = useState<LiveWorkoutLogEntry[]>([]);
+  const [selectedLiveWorkoutId, setSelectedLiveWorkoutId] = useState("");
+  const [previewLiveWorkout, setPreviewLiveWorkout] = useState<LiveWorkoutLogEntry | null>(null);
   /** Po ruční změně sportu v dropdownu už OCR nepřepisuje workoutType (jinak „Walk“ z fotky přebije CrossFit). */
   const workoutTypeTouchedRef = useRef(false);
   const previewUrlRef = useRef<string | null>(null);
@@ -176,6 +189,14 @@ export function ImportsCenter() {
       if (u) URL.revokeObjectURL(u);
     };
   }, []);
+
+  const refreshLiveWorkoutLogs = useCallback(() => {
+    setLiveWorkoutLogs(readLiveWorkoutLogs());
+  }, []);
+
+  useEffect(() => {
+    if (importTarget === "training") refreshLiveWorkoutLogs();
+  }, [importTarget, refreshLiveWorkoutLogs]);
 
   useEffect(() => {
     void fetch("/api/imports")
@@ -277,7 +298,7 @@ export function ImportsCenter() {
         (k) => [k, parsedData[k]] as [string, string | number],
       );
     }
-    return Object.entries(parsedData);
+    return Object.entries(parsedData).filter(([key]) => key !== "linkedLiveWorkoutId");
   }, [importTarget, parsedData]);
 
   const onFileChange = (file: File | null) => {
@@ -302,8 +323,11 @@ export function ImportsCenter() {
   };
 
   const persistTrainingFromParsed = useCallback(
-    async (data: ParsedData): Promise<{ ok: true } | { ok: false; error: string }> => {
-      const fields = buildTrainingFieldsFromParsed(data);
+    async (
+      data: ParsedData,
+      linkedLiveWorkoutId?: string,
+    ): Promise<{ ok: true; sessionId: string } | { ok: false; error: string }> => {
+      let fields = buildTrainingFieldsFromParsed(data);
       if (useSupabase) {
         const response = await fetch("/api/training", {
           method: "POST",
@@ -314,10 +338,24 @@ export function ImportsCenter() {
           const result = (await response.json()) as { error?: string };
           return { ok: false, error: result.error ?? "Nepodařilo se zapsat trénink." };
         }
-        return { ok: true };
+        const result = (await response.json()) as { session: TrainingSession };
+        const sessionId = result.session.id;
+        if (linkedLiveWorkoutId) {
+          const notes = attachLiveWorkoutToTraining(linkedLiveWorkoutId, sessionId, fields.notes);
+          await fetch("/api/training", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id: sessionId, notes }),
+          });
+        }
+        return { ok: true, sessionId };
       }
-      repositories.training.create(fields);
-      return { ok: true };
+      const session = repositories.training.create(fields);
+      if (linkedLiveWorkoutId) {
+        const notes = attachLiveWorkoutToTraining(linkedLiveWorkoutId, session.id, fields.notes);
+        repositories.training.update(session.id, { notes });
+      }
+      return { ok: true, sessionId: session.id };
     },
     [repositories, useSupabase],
   );
@@ -367,6 +405,11 @@ export function ImportsCenter() {
   const onSaveImport = async () => {
     setErrorMessage(null);
     setMessage(null);
+    const parsedJsonForSave: ParsedData = { ...parsedData };
+    if (importTarget === "training" && selectedLiveWorkoutId) {
+      parsedJsonForSave.linkedLiveWorkoutId = selectedLiveWorkoutId;
+    }
+
     const response = await fetch("/api/imports", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -375,7 +418,7 @@ export function ImportsCenter() {
         sourceApp,
         imageName: imageName || "manual-entry.png",
         importTarget,
-        parsedJson: parsedData,
+        parsedJson: parsedJsonForSave,
         status: "saved",
       }),
     });
@@ -388,7 +431,10 @@ export function ImportsCenter() {
     setSavedImports((prev) => [result.importRecord, ...prev]);
 
     if (importTarget === "training") {
-      const t = await persistTrainingFromParsed(parsedData);
+      const t = await persistTrainingFromParsed(
+        parsedData,
+        selectedLiveWorkoutId || undefined,
+      );
       if (!t.ok) {
         setMessage("Import uložen.");
         setErrorMessage(
@@ -396,7 +442,12 @@ export function ImportsCenter() {
         );
         return;
       }
-      setMessage("Import uložen a trénink je zapsaný v záložce Trénink.");
+      setMessage(
+        selectedLiveWorkoutId
+          ? "Import uložen, trénink zapsán a propojen s živým tréninkem z aplikace. Detail uvidíš v záložce Trénink."
+          : "Import uložen a trénink je zapsaný v záložce Trénink.",
+      );
+      refreshLiveWorkoutLogs();
       return;
     }
 
@@ -413,12 +464,20 @@ export function ImportsCenter() {
     setErrorMessage(null);
     setMessage(null);
     if (importTarget === "training") {
-      const t = await persistTrainingFromParsed(parsedData);
+      const t = await persistTrainingFromParsed(
+        parsedData,
+        selectedLiveWorkoutId || undefined,
+      );
       if (!t.ok) {
         setErrorMessage(t.error);
         return;
       }
-      setMessage("Trénink vytvořen z importu.");
+      setMessage(
+        selectedLiveWorkoutId
+          ? "Trénink vytvořen a propojen s živým tréninkem z aplikace."
+          : "Trénink vytvořen z importu.",
+      );
+      refreshLiveWorkoutLogs();
       return;
     }
 
@@ -437,7 +496,8 @@ export function ImportsCenter() {
     setMessage(null);
     setWritingTrainingFromImportId(item.id);
     const data = item.parsed_json as ParsedData;
-    const t = await persistTrainingFromParsed(data);
+    const linkedId = String(data.linkedLiveWorkoutId ?? "").trim() || undefined;
+    const t = await persistTrainingFromParsed(data, linkedId);
     setWritingTrainingFromImportId(null);
     if (!t.ok) {
       setErrorMessage(t.error);
@@ -553,10 +613,61 @@ export function ImportsCenter() {
       <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
         <h3 className="mb-2 text-base font-semibold">Parser-ready hodnoty (ruční editace)</h3>
         {importTarget === "training" && (
-          <p className="mb-3 text-xs text-zinc-500">
-            Po uložení importu se stejný záznam automaticky zapíše i do záložky Trénink. Tlačítkem „Vytvořit trénink z
-            importu“ můžeš zapsat další řádek z aktuálních hodnot bez nového ukládání importu.
-          </p>
+          <>
+            <p className="mb-3 text-xs text-zinc-500">
+              Po uložení importu se stejný záznam automaticky zapíše i do záložky Trénink. Tlačítkem „Vytvořit trénink z
+              importu“ můžeš zapsat další řádek z aktuálních hodnot bez nového ukládání importu.
+            </p>
+            {sourceApp === "apple-fitness" && (
+              <p className="mb-3 text-xs text-sky-400/90">
+                Kondice / Apple Fitness neukazuje naše cviky (Blackjack, WOD, partie…) — níže můžeš propojit uložený živý
+                trénink z FitDeníku, abys měl detail k dispozici v Tréninku.
+              </p>
+            )}
+            <div className="mb-4 rounded-lg border border-sky-500/25 bg-sky-950/20 p-3">
+              <label className="mb-1 block text-sm font-medium text-zinc-200" htmlFor="import-live-workout-link">
+                Připojit živý trénink z aplikace (volitelné)
+              </label>
+              {liveWorkoutLogs.length === 0 ? (
+                <p className="text-xs text-zinc-500">
+                  Zatím žádný uložený živý trénink. Nejdřív dokonči session v{" "}
+                  <a href="/training/live" className="text-ew-blue-light underline">
+                    Živý trénink
+                  </a>
+                  , pak importuj screenshot z Kondice.
+                </p>
+              ) : (
+                <>
+                  <select
+                    id="import-live-workout-link"
+                    value={selectedLiveWorkoutId}
+                    onChange={(e) => setSelectedLiveWorkoutId(e.target.value)}
+                    className="w-full rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-sm text-white"
+                  >
+                    <option value="">— nepřipojovat —</option>
+                    {liveWorkoutLogs.map((log) => (
+                      <option key={log.id} value={log.id}>
+                        {describeLiveWorkoutEntry(log)}
+                        {log.linkedTrainingSessionId ? " · už propojeno" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedLiveWorkoutId ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const entry = findLiveWorkoutById(selectedLiveWorkoutId);
+                        if (entry) setPreviewLiveWorkout(entry);
+                      }}
+                      className="mt-2 text-xs text-ew-blue-light underline"
+                    >
+                      Náhled vybraného tréninku
+                    </button>
+                  ) : null}
+                </>
+              )}
+            </div>
+          </>
         )}
         {importTarget === "nutrition" && sourceApp === "calorie-table" && (
           <p className="mb-3 text-xs text-zinc-500">
@@ -697,6 +808,10 @@ export function ImportsCenter() {
           })}
         </div>
       </div>
+
+      {previewLiveWorkout && (
+        <LiveWorkoutDetailModal entry={previewLiveWorkout} onClose={() => setPreviewLiveWorkout(null)} />
+      )}
     </div>
   );
 }

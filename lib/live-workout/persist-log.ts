@@ -17,6 +17,8 @@ export type LiveWorkoutLogEntry = {
   notes?: string;
   /** Vlastní váhy / škálování zadané při živém tréninku (CrossFit). */
   loadUsed?: string;
+  /** Propojení se záznamem v Trénink (import z Kondice / Apple Fitness). */
+  linkedTrainingSessionId?: string;
 };
 
 export function readLiveWorkoutLogs(): LiveWorkoutLogEntry[] {
@@ -44,4 +46,25 @@ export function saveLiveWorkoutLog(
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }
   return entry;
+}
+
+export function findLiveWorkoutById(id: string): LiveWorkoutLogEntry | null {
+  return readLiveWorkoutLogs().find((e) => e.id === id) ?? null;
+}
+
+/** Propojí živý trénink se záznamem v deníku (localStorage). */
+export function linkLiveWorkoutToTrainingSession(liveWorkoutId: string, trainingSessionId: string): void {
+  if (typeof window === "undefined") return;
+  const logs = readLiveWorkoutLogs();
+  const next = logs.map((e) => {
+    if (e.linkedTrainingSessionId === trainingSessionId && e.id !== liveWorkoutId) {
+      const { linkedTrainingSessionId: _removed, ...rest } = e;
+      return rest as LiveWorkoutLogEntry;
+    }
+    if (e.id === liveWorkoutId) {
+      return { ...e, linkedTrainingSessionId: trainingSessionId };
+    }
+    return e;
+  });
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
 }

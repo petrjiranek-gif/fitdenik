@@ -37,10 +37,10 @@ export const BODYWEIGHT_WODS: Record<BodyweightWodKey, LiveWodDefinition> = {
     subtitle: 'Benchmark WOD (aka „Twenty-One")',
     scoreType: "For Time",
     prescription:
-      "Žebříček kliků a sedy-lehů tak, aby součet v každé rundě byl 21: 20 kliků + 1 sed-leh, 19+2, 18+3 … až 1+20.",
+      "Žebříček dvou zvolených cviků: součet v každé sérii je 21 (20+1, 19+2, 18+3 … až 1+20). Výchozí push-up + sit-up.",
     description:
-      "Dokonči celý předpis v pořadí. Celkem 20 „kol“ po 21 opakováních = 420 rep (stejně jako součet karet u blackjacku). Skóre je čas dokončení.",
-    segments: [{ label: "Kliky + sedy-lehy (součet)", reps: 420 }],
+      "Dokonči 20 sérií v pořadí — celkem 420 opakování. Před startem zvol dvě svalové partie a cviky (včetně CrossFit pohybů). Skóre je čas dokončení.",
+    segments: [{ label: "Oba cviky (součet 20 sérií)", reps: 420 }],
     benchmarks: [
       { level: "Orientace", timeRange: "záleží na kondici a strategii sad" },
       { level: "Zdroj", timeRange: "WodWell" },

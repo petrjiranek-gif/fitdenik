@@ -5,6 +5,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { getRepositories } from "@/lib/repositories/provider";
 import { CROSSFIT_MASTERS_WORKOUTS, type MastersWorkoutDef } from "@/lib/benchmarks/masters-crossfit";
 import { coerceSportType, SPORT_TYPE_OPTIONS } from "@/lib/sport-type";
+import { LiveWorkoutDetailModal } from "@/components/fitdenik/live-workout-detail-modal";
+import type { LiveWorkoutLogEntry } from "@/lib/live-workout/persist-log";
+import {
+  embedLiveWorkoutLinkInNotes,
+  extractLiveWorkoutIdFromNotes,
+  resolveLiveWorkoutForSession,
+  stripLiveWorkoutLinkMarker,
+} from "@/lib/live-workout/training-link";
 import type { BenchmarkResult, SportType, TrainingSession } from "@/lib/types";
 import { formInputClass } from "@/components/fitdenik/form-fields";
 
@@ -195,6 +203,7 @@ export function TrainingOverview() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [editing, setEditing] = useState<TrainingSession | null>(null);
+  const [viewingLiveWorkout, setViewingLiveWorkout] = useState<LiveWorkoutLogEntry | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [mastersDivision, setMastersDivision] = useState<CrossfitMastersDivision>("45-49");
@@ -305,6 +314,15 @@ export function TrainingOverview() {
       }),
     [filteredSessions],
   );
+
+  const liveLogBySessionId = useMemo(() => {
+    const map = new Map<string, LiveWorkoutLogEntry>();
+    for (const s of sessions) {
+      const linked = resolveLiveWorkoutForSession(s);
+      if (linked) map.set(s.id, linked);
+    }
+    return map;
+  }, [sessions]);
 
   useEffect(() => {
     if (!selectedDate && sorted.length > 0) {
@@ -771,13 +789,14 @@ export function TrainingOverview() {
                 <th className="px-3 py-2 font-medium">kcal/min</th>
                 <th className="px-3 py-2 font-medium">IM 2030</th>
                 <th className="px-3 py-2 font-medium">Poznámka</th>
+                <th className="px-3 py-2 font-medium">FitDeník</th>
                 <th className="px-3 py-2 font-medium" />
               </tr>
             </thead>
             <tbody className="bg-ew-bg">
               {sorted.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-3 py-8 text-center text-ew-muted">
+                  <td colSpan={10} className="px-3 py-8 text-center text-ew-muted">
                     Zatím nic v deníku.
                   </td>
                 </tr>
@@ -791,7 +810,22 @@ export function TrainingOverview() {
                     <td className="px-3 py-2">{s.calories}</td>
                     <td className="px-3 py-2">{s.durationMin > 0 ? kcalPerMin(s).toFixed(1) : "—"}</td>
                     <td className="px-3 py-2">{s.ironMan2030Project ? "✓" : "—"}</td>
-                    <td className="max-w-[12rem] truncate px-3 py-2 text-ew-muted">{s.notes || "—"}</td>
+                    <td className="max-w-[12rem] truncate px-3 py-2 text-ew-muted">
+                      {stripLiveWorkoutLinkMarker(s.notes) || "—"}
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2">
+                      {liveLogBySessionId.has(s.id) ? (
+                        <button
+                          type="button"
+                          onClick={() => setViewingLiveWorkout(liveLogBySessionId.get(s.id)!)}
+                          className="text-xs text-sky-300 hover:underline"
+                        >
+                          Cviky / WOD
+                        </button>
+                      ) : (
+                        <span className="text-ew-muted">—</span>
+                      )}
+                    </td>
                     <td className="whitespace-nowrap px-3 py-2">
                       <button
                         type="button"
@@ -820,10 +854,19 @@ export function TrainingOverview() {
         </div>
       </section>
 
+      {viewingLiveWorkout && (
+        <LiveWorkoutDetailModal
+          entry={viewingLiveWorkout}
+          onClose={() => setViewingLiveWorkout(null)}
+        />
+      )}
+
       {editing && (
         <EditTrainingModal
           key={editing.id}
           session={editing}
+          linkedLiveWorkout={liveLogBySessionId.get(editing.id) ?? null}
+          onViewLiveWorkout={setViewingLiveWorkout}
           saving={saving}
           error={saveError}
           onClose={() => setEditing(null)}
@@ -861,12 +904,16 @@ export function TrainingOverview() {
 
 function EditTrainingModal({
   session,
+  linkedLiveWorkout,
+  onViewLiveWorkout,
   saving,
   error,
   onClose,
   onSave,
 }: {
   session: TrainingSession;
+  linkedLiveWorkout: LiveWorkoutLogEntry | null;
+  onViewLiveWorkout: (entry: LiveWorkoutLogEntry) => void;
   saving: boolean;
   error: string | null;
   onClose: () => void;
@@ -878,17 +925,36 @@ function EditTrainingModal({
   const [durationMin, setDurationMin] = useState(session.durationMin);
   const [calories, setCalories] = useState(session.calories);
   const [distanceKm, setDistanceKm] = useState(session.distanceKm);
-  const [notes, setNotes] = useState(session.notes);
+  const [notes, setNotes] = useState(() => stripLiveWorkoutLinkMarker(session.notes));
   const [ironMan2030Project, setIronMan2030Project] = useState(Boolean(session.ironMan2030Project));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal>
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-ew-border bg-ew-panel p-4 shadow-xl">
         <h3 className="text-lg font-semibold text-white">Upravit trénink</h3>
+        {linkedLiveWorkout && (
+          <div className="mt-3 rounded-lg border border-sky-500/25 bg-sky-950/20 px-3 py-2 text-sm text-zinc-300">
+            <p>
+              Propojený živý trénink:{" "}
+              <span className="font-medium text-sky-200">{linkedLiveWorkout.wodName}</span>
+            </p>
+            <button
+              type="button"
+              onClick={() => onViewLiveWorkout(linkedLiveWorkout)}
+              className="mt-1 text-xs text-ew-blue-light underline"
+            >
+              Zobrazit cviky a detail z aplikace
+            </button>
+          </div>
+        )}
         <form
           className="mt-4 grid gap-3"
           onSubmit={(e) => {
             e.preventDefault();
+            const liveId = extractLiveWorkoutIdFromNotes(session.notes);
+            const notesToSave = liveId
+              ? embedLiveWorkoutLinkInNotes(notes, liveId)
+              : notes;
             void onSave({
               date,
               title,
@@ -896,7 +962,7 @@ function EditTrainingModal({
               durationMin,
               calories,
               distanceKm,
-              notes,
+              notes: notesToSave,
               ironMan2030Project,
             });
           }}

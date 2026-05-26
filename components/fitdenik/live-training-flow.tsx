@@ -24,6 +24,19 @@ import {
   getBodybuildingExercisesForMuscle,
   type BodybuildingEquipmentId,
 } from "@/lib/live-workout/bodybuilding-data";
+import {
+  BLACKJACK_DEFAULT_EXERCISE_A,
+  BLACKJACK_DEFAULT_EXERCISE_B,
+  BLACKJACK_DEFAULT_MUSCLE_A,
+  BLACKJACK_DEFAULT_MUSCLE_B,
+  BLACKJACK_MUSCLE_ORDER,
+  BLACKJACK_TOTAL_REPS,
+  BLACKJACK_TOTAL_ROUNDS,
+  blackjackRoundLabel,
+  blackjackRoundReps,
+  getBlackjackExercisesForMuscle,
+  type BlackjackMuscleGroup,
+} from "@/lib/live-workout/blackjack-data";
 import { playRestCountdownTick, playRestFinished } from "@/lib/live-workout/rest-sounds";
 import type { LiveSportCategory } from "@/lib/types";
 
@@ -190,8 +203,20 @@ function segmentLabel(wod: LiveWodDefinition, completed: number): string {
   return `${completed} / ${t}`;
 }
 
-/** Detail průběhu (Angie/ANDI) — pod velkým počítadlem. */
-function repProgressDetail(wod: LiveWodDefinition, completed: number): string | null {
+/** Detail průběhu (Angie/ANDI / Blackjack) — pod velkým počítadlem. */
+function repProgressDetail(
+  wod: LiveWodDefinition,
+  completed: number,
+  blackjack?: { roundsDone: number; exerciseA: string; exerciseB: string },
+): string | null {
+  if (wod.key === "bw_blackjack" && blackjack) {
+    const { roundsDone, exerciseA, exerciseB } = blackjack;
+    if (roundsDone >= BLACKJACK_TOTAL_ROUNDS) {
+      return `Hotovo — ${BLACKJACK_TOTAL_ROUNDS} sérií (${exerciseA} + ${exerciseB})`;
+    }
+    const next = roundsDone + 1;
+    return `Série ${next}/${BLACKJACK_TOTAL_ROUNDS}: ${blackjackRoundLabel(next, exerciseA, exerciseB)}`;
+  }
   if (wod.key === "angie" || wod.key === "bw_angie") return angieProgressLabel(completed);
   if (wod.key === "andi") return andiProgressLabel(completed);
   return null;
@@ -296,8 +321,14 @@ export function LiveTrainingFlow() {
   const [kmInput, setKmInput] = useState("");
   const [ozInput, setOzInput] = useState("");
   const [gramInput, setGramInput] = useState("");
+  const [bjMuscleA, setBjMuscleA] = useState<BlackjackMuscleGroup>(BLACKJACK_DEFAULT_MUSCLE_A);
+  const [bjMuscleB, setBjMuscleB] = useState<BlackjackMuscleGroup>(BLACKJACK_DEFAULT_MUSCLE_B);
+  const [bjExerciseA, setBjExerciseA] = useState(BLACKJACK_DEFAULT_EXERCISE_A);
+  const [bjExerciseB, setBjExerciseB] = useState(BLACKJACK_DEFAULT_EXERCISE_B);
+  const [bjRoundsCompleted, setBjRoundsCompleted] = useState(0);
 
   const selectedWod = wodKey ? LIVE_WODS[wodKey] : null;
+  const isBlackjackWod = wodKey === "bw_blackjack";
   const wod = freeWorkoutMode ? FREE_WORKOUT_WOD : selectedWod;
   const hyroxVariant = hyroxVariantKey ? HYROX_VARIANTS[hyroxVariantKey] : null;
   const hyroxTotalSteps = hyroxVariant ? hyroxVariant.rounds * hyroxVariant.steps.length : 0;
@@ -306,7 +337,9 @@ export function LiveTrainingFlow() {
     hyroxVariant?.name ??
     (sport === "bodybuilding" && bbProgram
       ? `${bbProgram === "1x100" ? "1×100" : "10×10"} · ${bbExercise || "—"}`
-      : wod?.name);
+      : isBlackjackWod
+        ? `Blackjack · ${bjExerciseA} + ${bjExerciseB}`
+        : wod?.name);
   const target = wod ? totalTargetReps(wod) : 0;
   const hideRepRemaining =
     wod?.liveFinishAnytime === true &&
@@ -318,6 +351,30 @@ export function LiveTrainingFlow() {
         ? completedReps > 0 || bbSetsConfirmed > 0
         : wod && (wod.liveFinishAnytime || target === 0 || completedReps >= target),
   );
+
+  useEffect(() => {
+    if (wodKey !== "bw_blackjack") return;
+    setBjMuscleA(BLACKJACK_DEFAULT_MUSCLE_A);
+    setBjMuscleB(BLACKJACK_DEFAULT_MUSCLE_B);
+    setBjExerciseA(BLACKJACK_DEFAULT_EXERCISE_A);
+    setBjExerciseB(BLACKJACK_DEFAULT_EXERCISE_B);
+    setBjRoundsCompleted(0);
+  }, [wodKey]);
+
+  const bjExerciseOptionsA = useMemo(() => getBlackjackExercisesForMuscle(bjMuscleA), [bjMuscleA]);
+  const bjExerciseOptionsB = useMemo(() => getBlackjackExercisesForMuscle(bjMuscleB), [bjMuscleB]);
+
+  useEffect(() => {
+    if (bjExerciseOptionsA.length && !bjExerciseOptionsA.includes(bjExerciseA)) {
+      setBjExerciseA(bjExerciseOptionsA[0]!);
+    }
+  }, [bjMuscleA, bjExerciseOptionsA, bjExerciseA]);
+
+  useEffect(() => {
+    if (bjExerciseOptionsB.length && !bjExerciseOptionsB.includes(bjExerciseB)) {
+      setBjExerciseB(bjExerciseOptionsB[0]!);
+    }
+  }, [bjMuscleB, bjExerciseOptionsB, bjExerciseB]);
 
   useEffect(() => {
     if (cfKind !== "open" || wodKey == null) return;
@@ -414,6 +471,16 @@ export function LiveTrainingFlow() {
     setBbSetBaselineReps(0);
     setRestEndsAt(null);
     setBbReadyForCurrentSet(false);
+    setBjRoundsCompleted(0);
+  };
+
+  const confirmBlackjackRound = () => {
+    if (!isBlackjackWod || bjRoundsCompleted >= BLACKJACK_TOTAL_ROUNDS) return;
+    const nextRound = bjRoundsCompleted + 1;
+    const { repsA, repsB } = blackjackRoundReps(nextRound);
+    undoLast.current.push(repsA + repsB);
+    setBjRoundsCompleted(nextRound);
+    setCompletedReps(nextRound * 21);
   };
 
   const setBearRoundWeight = (idx: number, value: string) => {
@@ -442,6 +509,14 @@ export function LiveTrainingFlow() {
   const undo = () => {
     const last = undoLast.current.pop();
     if (last == null) return;
+    if (isBlackjackWod) {
+      setBjRoundsCompleted((r) => {
+        const next = Math.max(0, r - 1);
+        setCompletedReps(next * 21);
+        return next;
+      });
+      return;
+    }
     setCompletedReps((c) => Math.max(0, c - last));
   };
 
@@ -578,6 +653,9 @@ export function LiveTrainingFlow() {
         hyroxSetupSummary,
         hyroxSummary ? ` Kroky HYROX: ${hyroxSummary}.` : "",
         bbNotes,
+        isBlackjackWod
+          ? ` Blackjack: ${bjExerciseA} (${bjMuscleA}) + ${bjExerciseB} (${bjMuscleB}). Dokončené série: ${bjRoundsCompleted}/${BLACKJACK_TOTAL_ROUNDS}.`
+          : "",
       ].join(""),
       loadUsed: loadTrim || bbWeightKg.trim() || undefined,
     });
@@ -617,12 +695,19 @@ export function LiveTrainingFlow() {
     bbWeightKg,
     bbSetsConfirmed,
     bbRestVariant,
+    isBlackjackWod,
+    bjMuscleA,
+    bjMuscleB,
+    bjExerciseA,
+    bjExerciseB,
+    bjRoundsCompleted,
   ]);
 
   const openActive = () => {
     if (!wod && !hyroxVariant) return;
     setCompletedReps(0);
     undoLast.current = [];
+    setBjRoundsCompleted(0);
     startedAtRef.current = null;
     setElapsedMs(0);
     setRunning(false);
@@ -1000,6 +1085,83 @@ export function LiveTrainingFlow() {
               );
             })}
           </div>
+          {wod && sport === "bodyweight" && isBlackjackWod && (
+            <div className="mt-4 space-y-4 rounded-lg border border-sky-500/25 bg-sky-950/20 p-4">
+              <p className="text-sm text-zinc-300">
+                Dva cviky v žebříčku 20/1 → 19/2 → … → 1/20 (součet v každé sérii je 21). Výchozí: push-up + sit-up.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-zinc-400" htmlFor="bj-muscle-a">
+                    Svalová partie 1
+                  </label>
+                  <select
+                    id="bj-muscle-a"
+                    value={bjMuscleA}
+                    onChange={(e) => setBjMuscleA(e.target.value as BlackjackMuscleGroup)}
+                    className="w-full appearance-auto rounded-lg border border-ew-border bg-ew-bg px-3 py-2 text-base text-white sm:text-sm"
+                  >
+                    {BLACKJACK_MUSCLE_ORDER.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="mb-1 mt-2 block text-xs font-medium text-zinc-400" htmlFor="bj-exercise-a">
+                    Cvik 1
+                  </label>
+                  <select
+                    id="bj-exercise-a"
+                    value={bjExerciseA}
+                    onChange={(e) => setBjExerciseA(e.target.value)}
+                    className="w-full appearance-auto rounded-lg border border-ew-border bg-ew-bg px-3 py-2 text-base text-white sm:text-sm"
+                  >
+                    {bjExerciseOptionsA.map((ex) => (
+                      <option key={ex} value={ex}>
+                        {ex}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-zinc-400" htmlFor="bj-muscle-b">
+                    Svalová partie 2
+                  </label>
+                  <select
+                    id="bj-muscle-b"
+                    value={bjMuscleB}
+                    onChange={(e) => setBjMuscleB(e.target.value as BlackjackMuscleGroup)}
+                    className="w-full appearance-auto rounded-lg border border-ew-border bg-ew-bg px-3 py-2 text-base text-white sm:text-sm"
+                  >
+                    {BLACKJACK_MUSCLE_ORDER.map((m) => (
+                      <option key={m} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </select>
+                  <label className="mb-1 mt-2 block text-xs font-medium text-zinc-400" htmlFor="bj-exercise-b">
+                    Cvik 2
+                  </label>
+                  <select
+                    id="bj-exercise-b"
+                    value={bjExerciseB}
+                    onChange={(e) => setBjExerciseB(e.target.value)}
+                    className="w-full appearance-auto rounded-lg border border-ew-border bg-ew-bg px-3 py-2 text-base text-white sm:text-sm"
+                  >
+                    {bjExerciseOptionsB.map((ex) => (
+                      <option key={ex} value={ex}>
+                        {ex}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <p className="text-xs text-zinc-500">
+                První série: {blackjackRoundLabel(1, bjExerciseA, bjExerciseB)} · poslední:{" "}
+                {blackjackRoundLabel(BLACKJACK_TOTAL_ROUNDS, bjExerciseA, bjExerciseB)}
+              </p>
+            </div>
+          )}
           {wod && sport === "bodyweight" && (
             <div className="mt-4 flex flex-wrap gap-2">
               <button
@@ -1442,6 +1604,24 @@ export function LiveTrainingFlow() {
                 idSuffix="live"
               />
             )}
+            {isBlackjackWod && wod && (
+              <div className="mt-3 rounded-lg border border-sky-500/25 bg-sky-950/20 px-3 py-3 text-sm text-zinc-300">
+                <p>
+                  <span className="font-semibold text-sky-300">Cvik 1:</span> {bjExerciseA}{" "}
+                  <span className="text-zinc-500">({bjMuscleA})</span>
+                </p>
+                <p className="mt-1">
+                  <span className="font-semibold text-sky-300">Cvik 2:</span> {bjExerciseB}{" "}
+                  <span className="text-zinc-500">({bjMuscleB})</span>
+                </p>
+                <p className="mt-2 text-xs text-zinc-500">
+                  Série {bjRoundsCompleted}/{BLACKJACK_TOTAL_ROUNDS} hotovo
+                  {bjRoundsCompleted < BLACKJACK_TOTAL_ROUNDS
+                    ? ` · aktuálně: ${blackjackRoundLabel(bjRoundsCompleted + 1, bjExerciseA, bjExerciseB)}`
+                    : ""}
+                </p>
+              </div>
+            )}
 
             {!hyroxVariant &&
               (() => {
@@ -1449,7 +1629,13 @@ export function LiveTrainingFlow() {
                 if (!wod && !bbLive) return null;
                 const repTarget = bbLive ? BB_TARGET_REPS : wod ? totalTargetReps(wod) : 0;
                 const repRem = Math.max(0, repTarget - completedReps);
-                const detail = wod ? repProgressDetail(wod, completedReps) : null;
+                const detail = wod
+                  ? repProgressDetail(wod, completedReps, {
+                      roundsDone: bjRoundsCompleted,
+                      exerciseA: bjExerciseA,
+                      exerciseB: bjExerciseB,
+                    })
+                  : null;
                 const showBigFraction =
                   repTarget > 0 && repTarget < UNCAPPED_REPS_THRESHOLD && (bbLive || !hideRepRemaining);
                 const subline = bbLive
@@ -1603,28 +1789,76 @@ export function LiveTrainingFlow() {
               </div>
             )}
 
-            <div className="mt-4">
-              <p className="mb-2 text-sm font-medium text-zinc-300">Přičíst opakování</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                {[1, 3, 5, 10].map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => addRepsTracked(n)}
-                    className="rounded-lg bg-ew-blue px-3 py-4 text-lg font-bold text-white hover:bg-ew-blue-dark"
-                  >
-                    +{n}
-                  </button>
-                ))}
+            {isBlackjackWod && wod ? (
+              <div className="mt-4 space-y-3 rounded-xl border border-sky-500/30 bg-sky-950/25 p-4">
+                <p className="text-sm font-medium text-zinc-200">Série (žebříček 20/1 → 1/20)</p>
+                {bjRoundsCompleted < BLACKJACK_TOTAL_ROUNDS ? (
+                  (() => {
+                    const next = bjRoundsCompleted + 1;
+                    const { repsA, repsB } = blackjackRoundReps(next);
+                    return (
+                      <>
+                        <p className="text-center text-sm text-zinc-400">
+                          Série {next}/{BLACKJACK_TOTAL_ROUNDS}
+                        </p>
+                        <div className="grid grid-cols-2 gap-2 text-center text-sm">
+                          <div className="rounded-lg border border-ew-border bg-ew-panel px-2 py-3">
+                            <p className="font-mono text-3xl font-bold text-white tabular-nums">{repsA}</p>
+                            <p className="mt-1 text-zinc-400">{bjExerciseA}</p>
+                          </div>
+                          <div className="rounded-lg border border-ew-border bg-ew-panel px-2 py-3">
+                            <p className="font-mono text-3xl font-bold text-white tabular-nums">{repsB}</p>
+                            <p className="mt-1 text-zinc-400">{bjExerciseB}</p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={confirmBlackjackRound}
+                          className="w-full rounded-lg bg-ew-blue px-4 py-4 text-base font-semibold text-white hover:bg-ew-blue-dark"
+                        >
+                          Potvrdit sérii ({repsA} + {repsB} = 21)
+                        </button>
+                      </>
+                    );
+                  })()
+                ) : (
+                  <p className="text-center text-sm font-medium text-emerald-300">
+                    Všech {BLACKJACK_TOTAL_ROUNDS} sérií dokončeno ({BLACKJACK_TOTAL_REPS} op.)
+                  </p>
+                )}
+                <button
+                  type="button"
+                  onClick={undo}
+                  disabled={bjRoundsCompleted === 0}
+                  className="w-full rounded-md border border-ew-border py-2 text-sm text-zinc-300 hover:bg-ew-panel disabled:opacity-40"
+                >
+                  Vrátit poslední sérii
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={undo}
-                className="mt-3 w-full rounded-md border border-ew-border py-2 text-sm text-zinc-300 hover:bg-ew-panel"
-              >
-                Vrátit poslední přičtení
-              </button>
-            </div>
+            ) : (
+              <div className="mt-4">
+                <p className="mb-2 text-sm font-medium text-zinc-300">Přičíst opakování</p>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                  {[1, 3, 5, 10].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => addRepsTracked(n)}
+                      className="rounded-lg bg-ew-blue px-3 py-4 text-lg font-bold text-white hover:bg-ew-blue-dark"
+                    >
+                      +{n}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={undo}
+                  className="mt-3 w-full rounded-md border border-ew-border py-2 text-sm text-zinc-300 hover:bg-ew-panel"
+                >
+                  Vrátit poslední přičtení
+                </button>
+              </div>
+            )}
 
             {wod?.key === "bear_complex" && (
               <div className="mt-4 rounded-xl border border-ew-border bg-ew-panel p-3">

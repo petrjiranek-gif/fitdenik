@@ -37,7 +37,13 @@ import {
   getBlackjackExercisesForMuscle,
   type BlackjackMuscleGroup,
 } from "@/lib/live-workout/blackjack-data";
-import { playRestCountdownTick, playRestFinished } from "@/lib/live-workout/rest-sounds";
+import {
+  playRestCountdownCue,
+  playRestFinished,
+  playRestSkipped,
+  playRestWorkCue,
+  primeRestAudio,
+} from "@/lib/live-workout/rest-sounds";
 import type { LiveSportCategory } from "@/lib/types";
 
 function formatElapsed(ms: number): string {
@@ -422,18 +428,22 @@ export function LiveTrainingFlow() {
       return;
     }
     restLastTickSecRef.current = null;
+    const timedRest = bbRestVariant === "count30" || bbRestVariant === "count60";
     const tick = () => {
       const left = restEndsAt - Date.now();
       setRestRemainingMs(Math.max(0, left));
       const secLeft = Math.ceil(left / 1000);
-      if (left > 0 && secLeft >= 1 && secLeft <= 5) {
+      if (left > 0 && secLeft >= 1) {
         if (restLastTickSecRef.current !== secLeft) {
           restLastTickSecRef.current = secLeft;
-          void playRestCountdownTick(secLeft);
+          if (timedRest) {
+            void playRestCountdownCue(secLeft);
+          }
         }
       }
       if (left <= 0) {
-        void playRestFinished();
+        if (timedRest) void playRestWorkCue();
+        else void playRestFinished();
         setBbReadyForCurrentSet(true);
         setRestEndsAt(null);
       }
@@ -441,7 +451,7 @@ export function LiveTrainingFlow() {
     tick();
     const id = setInterval(tick, 250);
     return () => clearInterval(id);
-  }, [restEndsAt]);
+  }, [restEndsAt, bbRestVariant]);
 
   const startTimer = () => {
     if (startedAtRef.current == null) {
@@ -533,14 +543,18 @@ export function LiveTrainingFlow() {
     setBbSetsConfirmed(next);
     setBbSetBaselineReps(completedReps);
     if (next < 10) {
-      if (bbRestVariant === "count30") setRestEndsAt(Date.now() + 30_000);
-      else if (bbRestVariant === "count60") setRestEndsAt(Date.now() + 60_000);
-      else if (bbRestVariant === "manual10") setBbReadyForCurrentSet(true);
+      if (bbRestVariant === "count30") {
+        void primeRestAudio();
+        setRestEndsAt(Date.now() + 30_000);
+      } else if (bbRestVariant === "count60") {
+        void primeRestAudio();
+        setRestEndsAt(Date.now() + 60_000);
+      } else if (bbRestVariant === "manual10") setBbReadyForCurrentSet(true);
     }
   };
 
   const skipRestCountdown = () => {
-    void playRestFinished();
+    void playRestSkipped();
     setBbReadyForCurrentSet(true);
     setRestEndsAt(null);
   };
@@ -723,6 +737,9 @@ export function LiveTrainingFlow() {
 
   const openBodybuildingLive = () => {
     if (!bbProgram || !bbMuscleGroup.trim() || !bbExercise.trim()) return;
+    if (bbProgram === "10x10" && (bbRestVariant === "count30" || bbRestVariant === "count60")) {
+      void primeRestAudio();
+    }
     setCompletedReps(0);
     undoLast.current = [];
     startedAtRef.current = null;
@@ -1225,8 +1242,8 @@ export function LiveTrainingFlow() {
                 {(
                   [
                     { id: "manual10" as const, label: "10 s", sub: "bez odpočtu v aplikaci" },
-                    { id: "count30" as const, label: "30 s", sub: "odpočet" },
-                    { id: "count60" as const, label: "1 min", sub: "odpočet" },
+                    { id: "count30" as const, label: "30 s", sub: "Prepare · pípání · 5–1 · Work" },
+                    { id: "count60" as const, label: "1 min", sub: "Prepare při 15 s · stejný zvuk" },
                   ] as const
                 ).map((opt) => (
                   <button
@@ -1244,6 +1261,13 @@ export function LiveTrainingFlow() {
                   </button>
                 ))}
               </div>
+              {(bbRestVariant === "count30" || bbRestVariant === "count60") && (
+                <p className="mt-2 text-xs text-zinc-500">
+                  Při 15 s zbývá „Prepare“, pak pípání každou sekundu, od 5 hlasitý odpočet, na konci „Work“.
+                  Prohlížeč nemůže ztišit YouTube Music — pro slyšitelnost sniž hlasitost hudby nebo použij
+                  sluchátka.
+                </p>
+              )}
             </div>
           )}
 
@@ -1715,9 +1739,21 @@ export function LiveTrainingFlow() {
                     <p className="mt-1 font-mono text-4xl font-bold tabular-nums text-amber-100">
                       {formatElapsed(restRemainingMs)}
                     </p>
-                    {restRemainingMs > 0 && Math.ceil(restRemainingMs / 1000) <= 5 && (
-                      <p className="mt-2 text-xs text-amber-300/95">Zvuk každou sekundu (posledních 5 s)</p>
-                    )}
+                    {restRemainingMs > 0 &&
+                      (() => {
+                        const sec = Math.ceil(restRemainingMs / 1000);
+                        const label =
+                          sec === 15
+                            ? "Prepare"
+                            : sec <= 5
+                              ? "Hlasitý odpočet"
+                              : sec <= 14 && sec >= 6
+                                ? "Pípání"
+                                : null;
+                        return label ? (
+                          <p className="mt-2 text-xs text-amber-300/95">{label}</p>
+                        ) : null;
+                      })()}
                     <button
                       type="button"
                       onClick={skipRestCountdown}

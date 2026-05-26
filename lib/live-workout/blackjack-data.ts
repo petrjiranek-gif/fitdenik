@@ -30,7 +30,7 @@ export const BLACKJACK_MUSCLE_GROUPS: Record<BlackjackMuscleGroup, string[]> = {
   Hamstringy: ["Sumo mrtvý tah", "Mrtvý tah s napnutýma nohama"],
   Lýtka: ["Výpony (stoje)"],
   Břicho: ["Sit-up", "Sedy-lehy", "Plank", "V-ups"],
-  CrossFit: ["Wall ball", "Thruster", "Deadlift", "Snatch", "Clean"],
+  CrossFit: ["Wall ball", "Thruster", "Deadlift", "Snatch", "Clean", "Burpee"],
 };
 
 export const BLACKJACK_DEFAULT_MUSCLE_A: BlackjackMuscleGroup = "Prsa";

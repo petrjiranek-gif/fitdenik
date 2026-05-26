@@ -1,11 +1,18 @@
 /**
- * Zvuky odpočtu pauzy (10×10 bodybuilding). Web Audio + Speech Synthesis.
- * 30 s / 1 min: při 15 s „Prepare“, pípání 14–6, hlasitý odpočet 5–1, na konci „Work“.
- *
- * Pozn.: Prohlížeč nemůže ztišit YouTube Music / Spotify — jen přehrát vlastní zvuk co nejhlasitěji.
+ * Zvuky odpočtu pauzy (10×10 bodybuilding).
+ * Prepare / Work = přednahrané hlasy (HTML Audio) — spolehlivé na iOS oproti speechSynthesis z timeru.
  */
 
+const VOICE_CUE_PATHS = {
+  prepare: "/audio/rest/prepare.aiff",
+  work: "/audio/rest/work.aiff",
+} as const;
+
 let sharedCtx: AudioContext | null = null;
+const voiceAudio: Partial<Record<keyof typeof VOICE_CUE_PATHS, HTMLAudioElement>> = {};
+let prepareVoicePlayed = false;
+let workVoicePlayed = false;
+const scheduledCueTimeouts: number[] = [];
 
 function getContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -17,7 +24,6 @@ async function ensureRunning(ctx: AudioContext): Promise<void> {
   if (ctx.state === "suspended") await ctx.resume();
 }
 
-/** Chromium: vyšší priorita přehrávání (ne ducking jiných aplikací). */
 function trySetPlaybackAudioSession(): void {
   if (typeof navigator === "undefined") return;
   const nav = navigator as Navigator & { audioSession?: { type: string } };
@@ -28,14 +34,133 @@ function trySetPlaybackAudioSession(): void {
   }
 }
 
-/** Volat po uživatelském gestu (potvrzení série) — odemkne audio na iOS. */
+function getVoiceAudio(kind: keyof typeof VOICE_CUE_PATHS): HTMLAudioElement {
+  let el = voiceAudio[kind];
+  if (!el) {
+    el = new Audio(VOICE_CUE_PATHS[kind]);
+    el.preload = "auto";
+    voiceAudio[kind] = el;
+  }
+  return el;
+}
+
+/** Odemkne audio při gestu uživatele (potvrzení série / start session). */
 export async function primeRestAudio(): Promise<void> {
+  const ctx = getContext();
+  if (ctx) {
+    try {
+      await ensureRunning(ctx);
+      trySetPlaybackAudioSession();
+      scheduleBeep(ctx, 440, ctx.currentTime, 0.02, 0.001);
+    } catch {
+      /* tichý fail */
+    }
+  }
+  for (const kind of Object.keys(VOICE_CUE_PATHS) as (keyof typeof VOICE_CUE_PATHS)[]) {
+    const a = getVoiceAudio(kind);
+    a.volume = 1;
+    try {
+      a.load();
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+export function resetRestVoiceFlags(): void {
+  prepareVoicePlayed = false;
+  workVoicePlayed = false;
+}
+
+export function clearScheduledRestVoiceCues(): void {
+  for (const id of scheduledCueTimeouts) window.clearTimeout(id);
+  scheduledCueTimeouts.length = 0;
+}
+
+/**
+ * Naplánuje Prepare (15 s před koncem) a Work (konec) hned při startu pauzy — z gesta uživatele.
+ * Na iOS je spolehlivější než čekat na speechSynthesis z intervalu.
+ */
+export function scheduleRestVoiceCues(totalRestMs: number): void {
+  clearScheduledRestVoiceCues();
+  resetRestVoiceFlags();
+
+  const prepareDelay = totalRestMs - 15_000;
+  if (prepareDelay >= 0) {
+    scheduledCueTimeouts.push(
+      window.setTimeout(() => {
+        void playPrepareVoice();
+      }, prepareDelay),
+    );
+  } else {
+    void playPrepareVoice();
+  }
+
+  scheduledCueTimeouts.push(
+    window.setTimeout(() => {
+      void playWorkVoice();
+    }, totalRestMs),
+  );
+}
+
+async function playVoiceFile(kind: keyof typeof VOICE_CUE_PATHS): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  const ctx = getContext();
+  if (ctx) await ensureRunning(ctx);
+  trySetPlaybackAudioSession();
+
+  const audio = getVoiceAudio(kind);
+  audio.volume = 1;
+  audio.currentTime = 0;
+  await audio.play();
+  return true;
+}
+
+/** Hlasité „Prepare“ — audio soubor, záloha speechSynthesis. */
+export async function playPrepareVoice(): Promise<void> {
+  if (prepareVoicePlayed) return;
+  prepareVoicePlayed = true;
+  try {
+    await playVoiceFile("prepare");
+    return;
+  } catch {
+    /* fallback */
+  }
+  speakEnglishFallback("Prepare");
+}
+
+/** Hlasité „Work“ — audio soubor + tón. */
+export async function playWorkVoice(): Promise<void> {
+  if (workVoicePlayed) return;
+  workVoicePlayed = true;
+  try {
+    await playVoiceFile("work");
+  } catch {
+    speakEnglishFallback("Work");
+  }
   const ctx = getContext();
   if (!ctx) return;
   try {
     await ensureRunning(ctx);
-    trySetPlaybackAudioSession();
-    scheduleBeep(ctx, 440, ctx.currentTime, 0.02, 0.001);
+    const t = ctx.currentTime + 0.2;
+    scheduleBeep(ctx, 880, t, 0.14, 0.4);
+  } catch {
+    /* tichý fail */
+  }
+}
+
+function speakEnglishFallback(text: string): void {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  try {
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = "en-US";
+    utter.rate = 1;
+    utter.volume = 1;
+    const voices = window.speechSynthesis.getVoices();
+    const en = voices.find((v) => v.lang.startsWith("en"));
+    if (en) utter.voice = en;
+    window.speechSynthesis.speak(utter);
   } catch {
     /* tichý fail */
   }
@@ -61,23 +186,6 @@ function scheduleBeep(
   osc.stop(startAt + durationSec + 0.03);
 }
 
-function speakEnglish(text: string): void {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  try {
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.lang = "en-US";
-    utter.rate = 1.05;
-    utter.pitch = 1;
-    utter.volume = 1;
-    const voices = window.speechSynthesis.getVoices();
-    const en = voices.find((v) => v.lang.startsWith("en") && /US|GB/i.test(v.lang));
-    if (en) utter.voice = en;
-    window.speechSynthesis.speak(utter);
-  } catch {
-    /* tichý fail */
-  }
-}
-
 async function playBeep(
   frequency: number,
   durationSec: number,
@@ -93,12 +201,10 @@ async function playBeep(
   }
 }
 
-/** Tiché pípnutí mezi Prepare a finálním odpočtem (zbývá 14–6 s). */
 async function playRestMidBeep(): Promise<void> {
   await playBeep(640, 0.06, 0.11);
 }
 
-/** Pip při zbývajících 5…1 s; `loud` pro 10×10 odpočet 30 s / 1 min. */
 export async function playRestCountdownTick(
   secondsLeftCeil: number,
   loud = false,
@@ -108,13 +214,11 @@ export async function playRestCountdownTick(
   await playBeep(freq, loud ? 0.1 : 0.07, loud ? 0.42 : 0.13);
 }
 
-/**
- * Jedna sekunda odpočtu 30 s / 1 min (volá se při změně ceil zbývajících sekund).
- */
+/** Jedna sekunda odpočtu — pípání; Prepare/Work řeší schedule + dedupe. */
 export async function playRestCountdownCue(secondsLeftCeil: number): Promise<void> {
   const sec = Math.round(secondsLeftCeil);
   if (sec === 15) {
-    speakEnglish("Prepare");
+    await playPrepareVoice();
     return;
   }
   if (sec >= 6 && sec <= 14) {
@@ -126,21 +230,10 @@ export async function playRestCountdownCue(secondsLeftCeil: number): Promise<voi
   }
 }
 
-/** Konec pauzy — hlas „Work“ (+ krátký tón). */
 export async function playRestWorkCue(): Promise<void> {
-  speakEnglish("Work");
-  const ctx = getContext();
-  if (!ctx) return;
-  try {
-    await ensureRunning(ctx);
-    const t = ctx.currentTime + 0.35;
-    scheduleBeep(ctx, 880, t, 0.14, 0.38);
-  } catch {
-    /* tichý fail */
-  }
+  await playWorkVoice();
 }
 
-/** Dvojitý tón = konec pauzy (legacy / ruční režim). */
 export async function playRestFinished(): Promise<void> {
   const ctx = getContext();
   if (!ctx) return;
@@ -154,7 +247,8 @@ export async function playRestFinished(): Promise<void> {
   }
 }
 
-/** Při ručním přeskočení pauzy. */
 export async function playRestSkipped(): Promise<void> {
+  clearScheduledRestVoiceCues();
+  resetRestVoiceFlags();
   await playBeep(659.25, 0.09, 0.14);
 }

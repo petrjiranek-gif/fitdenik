@@ -38,11 +38,14 @@ import {
   type BlackjackMuscleGroup,
 } from "@/lib/live-workout/blackjack-data";
 import {
+  clearScheduledRestVoiceCues,
   playRestCountdownCue,
   playRestFinished,
   playRestSkipped,
   playRestWorkCue,
   primeRestAudio,
+  resetRestVoiceFlags,
+  scheduleRestVoiceCues,
 } from "@/lib/live-workout/rest-sounds";
 import type { LiveSportCategory } from "@/lib/types";
 
@@ -423,6 +426,12 @@ export function LiveTrainingFlow() {
   }, [running]);
 
   useEffect(() => {
+    return () => {
+      clearScheduledRestVoiceCues();
+    };
+  }, []);
+
+  useEffect(() => {
     if (restEndsAt == null) {
       setRestRemainingMs(0);
       return;
@@ -482,6 +491,8 @@ export function LiveTrainingFlow() {
     setRestEndsAt(null);
     setBbReadyForCurrentSet(false);
     setBjRoundsCompleted(0);
+    clearScheduledRestVoiceCues();
+    resetRestVoiceFlags();
   };
 
   const confirmBlackjackRound = () => {
@@ -545,9 +556,11 @@ export function LiveTrainingFlow() {
     if (next < 10) {
       if (bbRestVariant === "count30") {
         void primeRestAudio();
+        scheduleRestVoiceCues(30_000);
         setRestEndsAt(Date.now() + 30_000);
       } else if (bbRestVariant === "count60") {
         void primeRestAudio();
+        scheduleRestVoiceCues(60_000);
         setRestEndsAt(Date.now() + 60_000);
       } else if (bbRestVariant === "manual10") setBbReadyForCurrentSet(true);
     }
@@ -1263,9 +1276,8 @@ export function LiveTrainingFlow() {
               </div>
               {(bbRestVariant === "count30" || bbRestVariant === "count60") && (
                 <p className="mt-2 text-xs text-zinc-500">
-                  Při 15 s zbývá „Prepare“, pak pípání každou sekundu, od 5 hlasitý odpočet, na konci „Work“.
-                  Prohlížeč nemůže ztišit YouTube Music — pro slyšitelnost sniž hlasitost hudby nebo použij
-                  sluchátka.
+                  Při 15 s uslyšíš hlas „Prepare“, pak pípání, od 5 hlasitý odpočet, na konci hlas „Work“
+                  (přednahrané audio — funguje i na iPhonu). Hudbu z jiných aplikací prohlížeč neztiší.
                 </p>
               )}
             </div>

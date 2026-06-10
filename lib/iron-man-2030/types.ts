@@ -25,6 +25,11 @@ export type IronMan2030Settings = {
 export type IronManCalendarDay = {
   status: CalendarDayStatus;
   reason?: string;
+  /** Vazba na schválený týdenní plán trenéra. */
+  coachPlanId?: string;
+  /** Ručně nebo automaticky (import tréninku) potvrzený den plánu. */
+  coachConfirmedAt?: string;
+  coachMatchedSessionId?: string;
 };
 
 export type IronManColdSession = {
@@ -54,6 +59,16 @@ export type IronManCoachCheckIn = {
   comment?: string;
 };
 
+export type IronManCoachPlanDayKind = "training" | "rest" | "regeneration";
+
+/** Jeden den týdenního plánu AI trenéra. */
+export type IronManCoachPlanDay = {
+  date: string;
+  dayLabel: string;
+  line: string;
+  kind: IronManCoachPlanDayKind;
+};
+
 /** Vygenerovaný týdenní plán od AI trenéra. */
 export type IronManCoachWeeklyPlan = {
   id: string;
@@ -61,6 +76,8 @@ export type IronManCoachWeeklyPlan = {
   /** Pondělí plánovaného týdne (ISO). */
   weekStart: string;
   markdown: string;
+  /** Strukturované dny pro úpravy a kalendář. */
+  days?: IronManCoachPlanDay[];
   approvedAt?: string;
 };
 

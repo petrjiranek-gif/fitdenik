@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { applyWeeklyPlanToCalendar } from "@/lib/iron-man-2030/coach-plan-apply";
+import { ensurePlanDays } from "@/lib/iron-man-2030/coach-plan-mutate";
 import { loadCoachData, saveIronManState } from "@/lib/iron-man-2030/coach-load-context";
 
 export async function POST() {
@@ -22,13 +23,10 @@ export async function POST() {
       return NextResponse.json({ ok: false, error: "Tento plán je už schválený." }, { status: 400 });
     }
 
-    const calendarPatch = applyWeeklyPlanToCalendar(
-      plan.markdown,
-      plan.weekStart,
-      state.settings.regenerationWeekday,
-    );
+    const planWithDays = ensurePlanDays(plan);
+    const calendarPatch = applyWeeklyPlanToCalendar(planWithDays, state.settings.regenerationWeekday);
 
-    const approvedPlan = { ...plan, approvedAt: new Date().toISOString() };
+    const approvedPlan = { ...planWithDays, approvedAt: new Date().toISOString() };
     const nextCalendar = { ...state.calendar, ...calendarPatch };
     const nextState = {
       ...state,

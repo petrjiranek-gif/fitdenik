@@ -35,6 +35,7 @@ import {
   weeklySessionTrend,
 } from "@/lib/iron-man-2030/compute";
 import { readIronManLocalState, writeIronManLocalState } from "@/lib/iron-man-2030/local-store";
+import { computeCoachConfirmationPatch, isCoachDayConfirmed } from "@/lib/iron-man-2030/coach-plan-sync";
 import { mergeIronManState } from "@/lib/iron-man-2030/state-merge";
 import type {
   IronMan2030Settings,
@@ -235,6 +236,23 @@ export function IronMan2030Dashboard() {
     void reload();
   }, [reload]);
 
+  const trainingDates = useMemo(() => new Set(sessions.map((s) => s.date)), [sessions]);
+  const sessionsByDate = useMemo(() => {
+    const map = new Map<string, TrainingSession>();
+    for (const s of sessions) {
+      if (!map.has(s.date)) map.set(s.date, s);
+    }
+    return map;
+  }, [sessions]);
+
+  useEffect(() => {
+    const planId = state.coachWeeklyPlan?.approvedAt ? state.coachWeeklyPlan.id : undefined;
+    if (!planId || !useSupabase) return;
+    const patch = computeCoachConfirmationPatch(state.calendar, sessions, planId);
+    if (Object.keys(patch).length === 0) return;
+    void persistState({ ...state, calendar: { ...state.calendar, ...patch } });
+  }, [sessions, state, state.coachWeeklyPlan?.id, state.coachWeeklyPlan?.approvedAt, useSupabase, persistState]);
+
   const calendar = useMemo(() => mergeCalendarWithTrainings(state.calendar, sessions), [state.calendar, sessions]);
   const settings = state.settings;
   const phase = useMemo(() => getActivePhase(), []);
@@ -265,10 +283,47 @@ export function IronMan2030Dashboard() {
 
   const setCalendarDay = (date: string, day: IronManCalendarDay | null) => {
     const nextCal = { ...state.calendar };
-    if (day) nextCal[date] = day;
-    else delete nextCal[date];
+    if (day) {
+      const prev = state.calendar[date];
+      nextCal[date] = prev
+        ? {
+            ...day,
+            coachPlanId: prev.coachPlanId,
+            coachConfirmedAt: prev.coachConfirmedAt,
+            coachMatchedSessionId: prev.coachMatchedSessionId,
+          }
+        : day;
+    } else delete nextCal[date];
     void persistState({ ...state, calendar: nextCal });
     setCalendarDialog(null);
+  };
+
+  const confirmCoachDay = async (date: string) => {
+    const session = sessionsByDate.get(date);
+    if (useSupabase) {
+      const res = await fetch("/api/iron-man-2030/coach/confirm-day", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, sessionId: session?.id }),
+      });
+      const j = (await res.json()) as { ok?: boolean; state?: IronMan2030State; error?: string };
+      if (j.state) setState(j.state);
+      else if (!j.ok) setError(j.error ?? "Potvrzení dne selhalo.");
+      return;
+    }
+    const prev = state.calendar[date];
+    if (!prev?.coachPlanId) return;
+    void persistState({
+      ...state,
+      calendar: {
+        ...state.calendar,
+        [date]: {
+          ...prev,
+          coachConfirmedAt: new Date().toISOString(),
+          coachMatchedSessionId: session?.id,
+        },
+      },
+    });
   };
 
   const addColdSession = (session: Omit<IronManColdSession, "id">) => {
@@ -608,21 +663,39 @@ export function IronMan2030Dashboard() {
           {monthCells(calendarMonth).map((cell) => {
             if (cell.day == null) return <div key={cell.key} />;
             const dayState = calendar[cell.key];
+            const rawDay = state.calendar[cell.key];
             const meta = dayState ? CALENDAR_DAY_META[dayState.status] : null;
+            const coachPlanned = Boolean(rawDay?.coachPlanId && state.coachWeeklyPlan?.approvedAt);
+            const coachDone = isCoachDayConfirmed(rawDay, trainingDates.has(cell.key));
             return (
               <button
                 key={cell.key}
                 type="button"
-                title={dayState ? meta?.label : "Klikni pro stav"}
+                title={
+                  coachPlanned
+                    ? coachDone
+                      ? "Plán potvrzen"
+                      : "Čeká na potvrzení (import nebo ručně)"
+                    : dayState
+                      ? meta?.label
+                      : "Klikni pro stav"
+                }
                 onClick={() => setCalendarDialog(cell.key)}
-                className="flex h-9 flex-col items-center justify-center rounded text-xs"
+                className="relative flex h-9 flex-col items-center justify-center rounded text-xs"
                 style={{
                   background: meta ? `${meta.color}33` : "transparent",
                   border: `1px solid ${meta?.color ?? "#334155"}`,
                 }}
               >
                 <span>{cell.day}</span>
-                {meta && <span className="text-[9px]">{meta.icon}</span>}
+                <div className="flex items-center gap-0.5">
+                  {meta && <span className="text-[9px]">{meta.icon}</span>}
+                  {coachPlanned && (
+                    <span className={`text-[9px] ${coachDone ? "text-emerald-400" : "text-amber-400"}`}>
+                      {coachDone ? "✓" : "☐"}
+                    </span>
+                  )}
+                </div>
               </button>
             );
           })}
@@ -633,35 +706,81 @@ export function IronMan2030Dashboard() {
               {CALENDAR_DAY_META[status as CalendarDayStatus]?.label ?? status}: {count}
             </span>
           ))}
+          {state.coachWeeklyPlan?.approvedAt && (
+            <span className="rounded bg-violet-950/40 px-2 py-1 text-violet-300">
+              ☐ čeká · ✓ potvrzeno (plán týdne)
+            </span>
+          )}
         </div>
       </section>
 
-      {calendarDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className={`${cardClass()} max-w-sm w-full`}>
-            <h4 className="font-semibold text-white">Den {calendarDialog}</h4>
-            <div className="mt-3 grid gap-2">
-              {(Object.keys(CALENDAR_DAY_META) as CalendarDayStatus[]).map((status) => (
+      {calendarDialog && (() => {
+        const rawDay = state.calendar[calendarDialog];
+        const session = sessionsByDate.get(calendarDialog);
+        const coachPlanned = Boolean(rawDay?.coachPlanId && state.coachWeeklyPlan?.approvedAt);
+        const coachDone = isCoachDayConfirmed(rawDay, Boolean(session));
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+            <div className={`${cardClass()} max-w-sm w-full`}>
+              <h4 className="font-semibold text-white">Den {calendarDialog}</h4>
+
+              {coachPlanned && (
+                <div className="mt-3 rounded-lg border border-violet-500/30 bg-violet-950/20 p-3 text-sm">
+                  <p className="text-xs font-semibold uppercase text-violet-300">Plán AI trenéra</p>
+                  <p className="mt-2 text-zinc-300">{rawDay?.reason ?? "—"}</p>
+                  <p className="mt-2 text-xs text-zinc-500">
+                    Stav: {coachDone ? "✓ potvrzeno" : "☐ čeká na import / potvrzení"}
+                  </p>
+                  {session && (
+                    <p className="mt-1 text-xs text-emerald-400/90">
+                      Import / trénink: {session.sportType} · {session.durationMin} min
+                      {session.title ? ` · ${session.title}` : ""}
+                    </p>
+                  )}
+                  {!coachDone && (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Link
+                        href="/imports"
+                        className="rounded border border-ew-border px-2 py-1 text-xs text-zinc-300 hover:bg-ew-bg"
+                        onClick={() => setCalendarDialog(null)}
+                      >
+                        Importovat trénink
+                      </Link>
+                      <button
+                        type="button"
+                        className="rounded bg-emerald-800 px-2 py-1 text-xs text-white hover:bg-emerald-700"
+                        onClick={() => void confirmCoachDay(calendarDialog)}
+                      >
+                        Potvrdit ručně
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-3 grid gap-2">
+                {(Object.keys(CALENDAR_DAY_META) as CalendarDayStatus[]).map((status) => (
+                  <button
+                    key={status}
+                    type="button"
+                    className="rounded-lg border border-ew-border px-3 py-2 text-left text-sm hover:bg-ew-bg"
+                    onClick={() => setCalendarDay(calendarDialog, { status })}
+                  >
+                    {CALENDAR_DAY_META[status].icon} {CALENDAR_DAY_META[status].label}
+                  </button>
+                ))}
                 <button
-                  key={status}
                   type="button"
-                  className="rounded-lg border border-ew-border px-3 py-2 text-left text-sm hover:bg-ew-bg"
-                  onClick={() => setCalendarDay(calendarDialog, { status })}
+                  className="text-xs text-zinc-500"
+                  onClick={() => setCalendarDialog(null)}
                 >
-                  {CALENDAR_DAY_META[status].icon} {CALENDAR_DAY_META[status].label}
+                  Zavřít
                 </button>
-              ))}
-              <button
-                type="button"
-                className="text-xs text-zinc-500"
-                onClick={() => setCalendarDialog(null)}
-              >
-                Zavřít
-              </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Body & mind */}
       <section className="grid gap-4 lg:grid-cols-2">

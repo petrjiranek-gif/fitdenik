@@ -7,6 +7,7 @@ import {
   IRON_MAN_COACH_USER_MESSAGE,
   buildCoachSystemPrompt,
 } from "@/lib/iron-man-2030/coach-prompt";
+import { ensurePlanDays } from "@/lib/iron-man-2030/coach-plan-mutate";
 import type { IronManCoachWeeklyPlan } from "@/lib/iron-man-2030/types";
 
 export async function POST(request: Request) {
@@ -55,12 +56,12 @@ export async function POST(request: Request) {
       messages: [{ role: "user", content: IRON_MAN_COACH_USER_MESSAGE }],
     });
 
-    const plan: IronManCoachWeeklyPlan = {
+    const plan = ensurePlanDays({
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
       weekStart: upcomingWeekMonday(),
       markdown,
-    };
+    });
 
     const nextState = {
       ...state,

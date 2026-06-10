@@ -4,14 +4,23 @@ import type { IronManDisciplineTag, SportType, TrainingSession } from "@/lib/typ
 /** Výchozí mapování sportu z deníku na disciplínu Iron Man modulu. */
 export function disciplineFromSportType(sport: SportType): IronManDisciplineTag {
   switch (sport) {
-    case "Cycling":
-      return "gravel";
+    case "Swimming":
+      return "swim";
     case "Scooter":
       return "scooter";
-    case "Walking":
-      return "run";
+    case "Gravel cycling":
+    case "Road cycling":
+    case "MTB":
+    case "Cycling":
+      return "gravel";
     case "Nordic walking":
       return "nordic_walk";
+    case "Running":
+    case "Walking":
+    case "Skiing":
+      return "run";
+    case "Golf":
+      return "golf";
     case "CrossFit":
       return "crossfit";
     case "Bodybuilding":

@@ -8,11 +8,17 @@ export type SourceType =
 export type SportType =
   | "CrossFit"
   | "Bodybuilding"
-  | "Cycling"
-  | "Walking"
+  | "Swimming"
   | "Scooter"
-  | "Skiing"
-  | "Nordic walking";
+  | "Gravel cycling"
+  | "Road cycling"
+  | "MTB"
+  | "Cycling"
+  | "Running"
+  | "Walking"
+  | "Nordic walking"
+  | "Golf"
+  | "Skiing";
 
 /** Živý trénink — kategorie (CrossFit má výběr benchmark WOD). */
 export type LiveSportCategory = "crossfit" | "bodybuilding" | "bodyweight" | "hyrox";

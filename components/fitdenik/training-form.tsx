@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { getFitdenikUserId } from "@/lib/fitdenik-user-id";
 import { getRepositories } from "@/lib/repositories/provider";
-import { SPORT_TYPE_OPTIONS } from "@/lib/sport-type";
+import { sportTypeLabel, SPORT_TYPE_OPTIONS } from "@/lib/sport-type";
 import type { SportType, TrainingSession } from "@/lib/types";
 import { formInputClass } from "@/components/fitdenik/form-fields";
 
@@ -113,7 +113,9 @@ export function TrainingSessionCreateForm() {
           className={formInputClass}
         >
           {SPORT_TYPE_OPTIONS.map((s) => (
-            <option key={s}>{s}</option>
+            <option key={s} value={s}>
+              {sportTypeLabel(s)}
+            </option>
           ))}
         </select>
       </label>

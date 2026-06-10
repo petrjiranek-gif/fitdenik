@@ -15,7 +15,7 @@ import {
   readLiveWorkoutLogs,
   type LiveWorkoutLogEntry,
 } from "@/lib/live-workout/persist-log";
-import { coerceSportType, SPORT_TYPE_OPTIONS } from "@/lib/sport-type";
+import { coerceSportType, sportTypeLabel, SPORT_TYPE_OPTIONS } from "@/lib/sport-type";
 import type { NutritionEntry, TrainingSession } from "@/lib/types";
 
 type ImportTarget = "training" | "nutrition";
@@ -690,7 +690,7 @@ export function ImportsCenter() {
                 >
                   {SPORT_TYPE_OPTIONS.map((option) => (
                     <option key={option} value={option}>
-                      {option}
+                      {sportTypeLabel(option)}
                     </option>
                   ))}
                 </select>
@@ -1148,14 +1148,6 @@ function extractPace(input: string): string | null {
 }
 
 function inferWorkoutType(input: string): TrainingSession["sportType"] {
-  const n = input.toLowerCase();
-  if (/(cross\s*training|crosstraining|cross-training|crossfit)/.test(n)) return "CrossFit";
-  if (/(nordic\s*walk|seversk)/.test(n)) return "Nordic walking";
-  if (/(walk|ch[uů]ze|walking|proch[aá]zka)/.test(n)) return "Walking";
-  if (/(run|b[eě]h|jog)/.test(n)) return "Walking";
-  if (/(cycle|bike|cyklo|cyklist|kolo|j[ií]zda)/.test(n)) return "Cycling";
-  if (/(scooter|kolob[eě][zž]k)/.test(n)) return "Scooter";
-  if (/(ski|ly[zž])/.test(n)) return "Skiing";
   return coerceSportType(input);
 }
 
@@ -1163,8 +1155,8 @@ function extractDistanceKm(
   input: string,
   workoutType: TrainingSession["sportType"],
 ): number {
-  // For CrossFit / Bodybuilding, distance is typically irrelevant unless explicitly labeled.
-  if (workoutType === "CrossFit" || workoutType === "Bodybuilding") {
+  // For silový trénink / gym, distance is typically irrelevant unless explicitly labeled.
+  if (workoutType === "CrossFit" || workoutType === "Bodybuilding" || workoutType === "Golf") {
     const explicit = input.match(
       /(distance|vzd[aá]lenost)\D{0,12}(\d+(?:\.\d+)?)\s*(km|kilometers?)/,
     );

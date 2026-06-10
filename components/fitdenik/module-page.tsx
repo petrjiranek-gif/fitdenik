@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { sportTypeLabel, SPORT_TYPE_OPTIONS } from "@/lib/sport-type";
 import { trainingSessions } from "@/lib/mock-data";
 
 export function MetricCards() {
@@ -75,10 +76,11 @@ export function FilterPanel({
           className="rounded-md border border-ew-border bg-ew-bg p-2 text-sm text-zinc-200"
         >
           <option value="vše">Sport: vše</option>
-          <option value="CrossFit">CrossFit</option>
-          <option value="Bodybuilding">Bodybuilding</option>
-          <option value="Cycling">Cycling</option>
-          <option value="Walking">Walking</option>
+          {SPORT_TYPE_OPTIONS.map((s) => (
+            <option key={s} value={s}>
+              {sportTypeLabel(s)}
+            </option>
+          ))}
         </select>
         <select
           value={metric}

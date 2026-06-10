@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { getRepositories } from "@/lib/repositories/provider";
 import { CROSSFIT_MASTERS_WORKOUTS, type MastersWorkoutDef } from "@/lib/benchmarks/masters-crossfit";
-import { coerceSportType, SPORT_TYPE_OPTIONS } from "@/lib/sport-type";
+import { coerceSportType, sportTypeLabel, SPORT_TYPE_OPTIONS } from "@/lib/sport-type";
 import { LiveWorkoutDetailModal } from "@/components/fitdenik/live-workout-detail-modal";
 import type { LiveWorkoutLogEntry } from "@/lib/live-workout/persist-log";
 import {
@@ -682,7 +682,7 @@ export function TrainingOverview() {
               <option value="vše">Vše</option>
               {SPORT_TYPE_OPTIONS.map((sport) => (
                 <option key={sport} value={sport}>
-                  {sport}
+                  {sportTypeLabel(sport)}
                 </option>
               ))}
             </select>
@@ -987,7 +987,9 @@ function EditTrainingModal({
             <span className="text-zinc-400">Sport</span>
             <select value={sportType} onChange={(e) => setSportType(e.target.value as SportType)} className={formInputClass}>
               {SPORT_TYPE_OPTIONS.map((s) => (
-                <option key={s}>{s}</option>
+                <option key={s} value={s}>
+                  {sportTypeLabel(s)}
+                </option>
               ))}
             </select>
           </label>

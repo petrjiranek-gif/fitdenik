@@ -1,3 +1,4 @@
+import { mergeIronManState } from "@/lib/iron-man-2030/state-merge";
 import { DEFAULT_IRON_MAN_STATE, type IronMan2030State } from "@/lib/iron-man-2030/types";
 
 const STORAGE_KEY = "fitdenik.ironMan2030.v1";
@@ -7,13 +8,7 @@ export function readIronManLocalState(): IronMan2030State {
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (!raw) return DEFAULT_IRON_MAN_STATE;
   try {
-    const parsed = JSON.parse(raw) as Partial<IronMan2030State>;
-    return {
-      settings: { ...DEFAULT_IRON_MAN_STATE.settings, ...parsed.settings },
-      calendar: parsed.calendar ?? {},
-      coldSessions: parsed.coldSessions ?? [],
-      meditationSessions: parsed.meditationSessions ?? [],
-    };
+    return mergeIronManState(JSON.parse(raw));
   } catch {
     return DEFAULT_IRON_MAN_STATE;
   }

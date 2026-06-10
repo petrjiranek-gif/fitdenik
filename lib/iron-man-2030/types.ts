@@ -43,11 +43,26 @@ export type IronManMeditationSession = {
   notes?: string;
 };
 
+/** Check-in před generováním týdenního plánu AI trenéra. */
+export type IronManCoachCheckIn = {
+  id: string;
+  createdAt: string;
+  feeling: string;
+  limitations: string;
+  equipment: string;
+  priority: string;
+  comment?: string;
+};
+
 export type IronMan2030State = {
   settings: IronMan2030Settings;
   calendar: Record<string, IronManCalendarDay>;
   coldSessions: IronManColdSession[];
   meditationSessions: IronManMeditationSession[];
+  /** Poslední check-in pro AI trenéra. */
+  coachCheckIn?: IronManCoachCheckIn | null;
+  /** Historie check-inů (nejnovější první). */
+  coachCheckInHistory?: IronManCoachCheckIn[];
 };
 
 export const DEFAULT_IRON_MAN_SETTINGS: IronMan2030Settings = {

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { CoachCheckInPanel } from "@/components/fitdenik/coach-check-in-panel";
 import { formInputClass } from "@/components/fitdenik/form-fields";
 import {
   CALENDAR_DAY_META,
@@ -38,6 +39,7 @@ import type {
   IronMan2030Settings,
   IronMan2030State,
   IronManCalendarDay,
+  IronManCoachCheckIn,
   IronManColdSession,
   IronManDisciplineSlice,
   IronManMeditationSession,
@@ -276,6 +278,15 @@ export function IronMan2030Dashboard() {
   const addMeditationSession = (session: Omit<IronManMeditationSession, "id">) => {
     const entry: IronManMeditationSession = { ...session, id: crypto.randomUUID() };
     void persistState({ ...state, meditationSessions: [entry, ...state.meditationSessions] });
+  };
+
+  const saveCoachCheckIn = (checkIn: IronManCoachCheckIn) => {
+    const history = [checkIn, ...(state.coachCheckInHistory ?? [])].slice(0, 12);
+    void persistState({
+      ...state,
+      coachCheckIn: checkIn,
+      coachCheckInHistory: history,
+    });
   };
 
   if (loading) {
@@ -706,6 +717,8 @@ export function IronMan2030Dashboard() {
         </p>
       </section>
 
+      <CoachCheckInPanel lastCheckIn={state.coachCheckIn} onSave={saveCoachCheckIn} />
+
       {/* Data challenges */}
       {challenges.length > 0 && (
         <section className="rounded-xl border border-amber-500/40 bg-amber-950/20 p-4">
@@ -777,9 +790,6 @@ export function IronMan2030Dashboard() {
         ))}
       </section>
 
-      <p className="text-center text-xs text-zinc-600">
-        AI trenér (týdenní plánování) bude doplněn v další fázi.
-      </p>
     </div>
   );
 }

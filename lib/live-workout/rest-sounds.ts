@@ -293,3 +293,28 @@ export async function playRestSkipped(): Promise<void> {
   resetRestVoiceFlags();
   await playBeep(659.25, 0.09, 0.14);
 }
+
+/** EMOM finisher — začátek nové minuty (3 stoupající tóny). */
+export async function playEmomMinuteStart(): Promise<void> {
+  const ctx = getContext();
+  if (!ctx) return;
+  try {
+    await ensureRunning(ctx);
+    const t = ctx.currentTime;
+    scheduleBeep(ctx, 660, t, 0.1, 0.3);
+    scheduleBeep(ctx, 880, t + 0.14, 0.1, 0.34);
+    scheduleBeep(ctx, 1108.73, t + 0.28, 0.14, 0.38);
+  } catch {
+    /* tichý fail */
+  }
+}
+
+/** EMOM finisher — posledních 5 s každé minuty. */
+export async function playEmomMinuteCountdownTick(secondsLeftCeil: number): Promise<void> {
+  await playRestCountdownTick(secondsLeftCeil, secondsLeftCeil <= 3);
+}
+
+/** EMOM finisher — celá session doběhla. */
+export async function playEmomSessionComplete(): Promise<void> {
+  await playRestFinished();
+}

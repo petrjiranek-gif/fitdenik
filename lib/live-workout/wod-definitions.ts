@@ -8,9 +8,22 @@ import {
   BODYWEIGHT_WODS,
   type BodyweightWodKey,
 } from "@/lib/live-workout/bodyweight-wods-data";
+import {
+  FINISHER_WODS,
+  type FinisherWodKey,
+} from "@/lib/live-workout/finisher-wods-data";
 import { OPEN_WODS, type OpenWodKey } from "@/lib/live-workout/open-wods-data";
 
-export type { LiveWodDefinition, WodBenchmarkRow, WodSegment } from "@/lib/live-workout/live-wod-types";
+export type {
+  EmomMinuteBlock,
+  FinisherDayType,
+  FinisherFormatType,
+  FinisherScoringField,
+  LiveWodDefinition,
+  WodBenchmarkRow,
+  WodMovement,
+  WodSegment,
+} from "@/lib/live-workout/live-wod-types";
 
 export type { OpenSeasonYear, OpenWodKey } from "@/lib/live-workout/open-wods-data";
 export {
@@ -24,6 +37,18 @@ export {
 export type { BodyweightWodKey } from "@/lib/live-workout/bodyweight-wods-data";
 export { BODYWEIGHT_WOD_ORDER, BODYWEIGHT_WODS } from "@/lib/live-workout/bodyweight-wods-data";
 
+export type { FinisherTodayContext, FinisherWodKey } from "@/lib/live-workout/finisher-wods-data";
+export {
+  FINISHER_DAY_TYPE_LABELS,
+  FINISHER_TODAY_CONTEXT_OPTIONS,
+  FINISHER_WOD_ORDER,
+  FINISHER_WODS,
+  finisherRepsPerRound,
+  getEmomBlockForMinute,
+  getEmomMinuteState,
+  isFinisherRecommendedForContext,
+} from "@/lib/live-workout/finisher-wods-data";
+
 export type CrossFitGirlKey =
   | "annie"
   | "andi"
@@ -33,7 +58,7 @@ export type CrossFitGirlKey =
   | "murph"
   | "bear_complex";
 
-export type LiveWodKey = CrossFitGirlKey | OpenWodKey | BodyweightWodKey;
+export type LiveWodKey = CrossFitGirlKey | OpenWodKey | BodyweightWodKey | FinisherWodKey;
 
 /** @deprecated použij LiveWodDefinition */
 export type CrossFitWodDefinition = LiveWodDefinition;
@@ -188,6 +213,7 @@ export const LIVE_WODS: Record<LiveWodKey, LiveWodDefinition> = {
   ...CROSSFIT_WODS,
   ...OPEN_WODS,
   ...BODYWEIGHT_WODS,
+  ...FINISHER_WODS,
 };
 
 export const CROSSFIT_WOD_ORDER: LiveWodKey[] = [

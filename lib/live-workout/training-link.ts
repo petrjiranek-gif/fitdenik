@@ -61,3 +61,25 @@ export function attachLiveWorkoutToTraining(
   linkLiveWorkoutToTrainingSession(liveWorkoutId, sessionId);
   return embedLiveWorkoutLinkInNotes(notes, liveWorkoutId);
 }
+
+export function todayIsoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/** Tréninky v deníku pro zadaný den (výchozí dnes). */
+export function listTrainingSessionsForDate(
+  sessions: TrainingSession[],
+  dateIso = todayIsoDate(),
+): TrainingSession[] {
+  return sessions
+    .filter((s) => s.date === dateIso || s.date.startsWith(dateIso))
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+}
+
+export function buildFinisherTrainingNoteAppendix(input: {
+  finisherName: string;
+  durationLabel: string;
+  scoreSummary: string;
+}): string {
+  return `Finisher: ${input.finisherName} — ${input.scoreSummary}, ${input.durationLabel} (doplněk po hlavním tréninku).`;
+}

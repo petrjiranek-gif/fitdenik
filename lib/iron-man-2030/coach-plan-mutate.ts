@@ -2,6 +2,7 @@ import {
   classifyLineKind,
   formatDayLine,
   parsePlanDays,
+  planDaysLookEmpty,
   rebuildMarkdownFromDays,
   stripDayPrefix,
   swapPlanDays,
@@ -10,10 +11,9 @@ import {
 import type { IronManCoachWeeklyPlan } from "@/lib/iron-man-2030/types";
 
 export function ensurePlanDays(plan: IronManCoachWeeklyPlan): IronManCoachWeeklyPlan {
-  return {
-    ...plan,
-    days: plan.days ?? parsePlanDays(plan.markdown, plan.weekStart),
-  };
+  const parsed = parsePlanDays(plan.markdown, plan.weekStart);
+  const days = planDaysLookEmpty(plan.days) ? parsed : (plan.days ?? parsed);
+  return { ...plan, days };
 }
 
 export function mutatePlanDays(plan: IronManCoachWeeklyPlan, days: NonNullable<IronManCoachWeeklyPlan["days"]>): IronManCoachWeeklyPlan {

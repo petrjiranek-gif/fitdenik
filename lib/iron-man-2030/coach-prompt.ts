@@ -84,8 +84,13 @@ Na konci plánu přidej:
 Komunikuj jako zkušený trenér: přímě, konkrétně, bez klišé. Nepiš: Dáš to!
 Piš: Tento týden je priorita aerobní základ — Zóna 2 na koloběžce, ne sprint.`;
 
-export const IRON_MAN_COACH_USER_MESSAGE =
-  "Vygeneruj tréninkový plán na příští týden (Pondělí–Neděle) podle systémového zadání. U každého dne začni názvem dne (Pondělí:, Úterý:, Středa:, Čtvrtek:, Pátek:, Sobota:, Neděle:).";
+export const IRON_MAN_COACH_USER_MESSAGE = `Vygeneruj tréninkový plán na příští týden (Pondělí–Neděle) podle systémového zadání.
+
+Formát výstupu (dodrž přesně):
+- Každý den začni samostatným řádkem: **Pondělí:** (pak **Úterý:** atd.)
+- Na dalších řádcích pod dnem uveď aktivitu, délku a cíl
+- Shrnutí týdne až na konci pod nadpisem **Shrnutí:**
+- Nepoužívej anglické názvy dnů`;
 
 export type CoachPromptContext = {
   settings: IronMan2030Settings;

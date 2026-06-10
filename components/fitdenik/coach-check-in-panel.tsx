@@ -231,9 +231,6 @@ export function CoachCheckInPanel({
         </div>
       )}
 
-      <p className="mt-3 text-xs text-zinc-600">
-        Generování týdenního plánu přibude v kroku 4–5 (prompt + Claude API).
-      </p>
     </section>
   );
 }

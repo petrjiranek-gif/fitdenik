@@ -54,6 +54,16 @@ export type IronManCoachCheckIn = {
   comment?: string;
 };
 
+/** Vygenerovaný týdenní plán od AI trenéra. */
+export type IronManCoachWeeklyPlan = {
+  id: string;
+  createdAt: string;
+  /** Pondělí plánovaného týdne (ISO). */
+  weekStart: string;
+  markdown: string;
+  approvedAt?: string;
+};
+
 export type IronMan2030State = {
   settings: IronMan2030Settings;
   calendar: Record<string, IronManCalendarDay>;
@@ -63,6 +73,10 @@ export type IronMan2030State = {
   coachCheckIn?: IronManCoachCheckIn | null;
   /** Historie check-inů (nejnovější první). */
   coachCheckInHistory?: IronManCoachCheckIn[];
+  /** Poslední vygenerovaný plán (návrh nebo schválený). */
+  coachWeeklyPlan?: IronManCoachWeeklyPlan | null;
+  /** Historie plánů (nejnovější první). */
+  coachPlanHistory?: IronManCoachWeeklyPlan[];
 };
 
 export const DEFAULT_IRON_MAN_SETTINGS: IronMan2030Settings = {

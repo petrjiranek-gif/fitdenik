@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CoachCheckInPanel } from "@/components/fitdenik/coach-check-in-panel";
+import { CoachPlanPanel } from "@/components/fitdenik/coach-plan-panel";
 import { formInputClass } from "@/components/fitdenik/form-fields";
 import {
   CALENDAR_DAY_META,
@@ -718,6 +719,13 @@ export function IronMan2030Dashboard() {
       </section>
 
       <CoachCheckInPanel lastCheckIn={state.coachCheckIn} onSave={saveCoachCheckIn} />
+
+      <CoachPlanPanel
+        lastCheckIn={state.coachCheckIn}
+        weeklyPlan={state.coachWeeklyPlan}
+        useSupabase={useSupabase}
+        onStateChange={setState}
+      />
 
       {/* Data challenges */}
       {challenges.length > 0 && (

@@ -19,5 +19,7 @@ export function mergeIronManState(raw: unknown): IronMan2030State {
     meditationSessions: Array.isArray(p.meditationSessions) ? p.meditationSessions : [],
     coachCheckIn: p.coachCheckIn ?? null,
     coachCheckInHistory: Array.isArray(p.coachCheckInHistory) ? p.coachCheckInHistory : [],
+    coachWeeklyPlan: p.coachWeeklyPlan ?? null,
+    coachPlanHistory: Array.isArray(p.coachPlanHistory) ? p.coachPlanHistory : [],
   };
 }

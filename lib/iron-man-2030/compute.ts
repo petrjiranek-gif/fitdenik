@@ -16,7 +16,8 @@ import type {
   IronManCalendarDay,
   IronManDisciplineSlice,
 } from "@/lib/iron-man-2030/types";
-import type { BodyMeasurementEntry, TrainingSession } from "@/lib/types";
+import { computeHrvTrend } from "@/lib/hrv/compute";
+import type { BodyMeasurementEntry, HrvEntry, TrainingSession } from "@/lib/types";
 
 export type CountdownParts = {
   years: number;
@@ -218,7 +219,7 @@ export function weeklySessionTrend(sessions: Array<{ sessionAt: string }>) {
   return buckets;
 }
 
-export function dataChallengeItems(settings: IronMan2030Settings) {
+export function dataChallengeItems(settings: IronMan2030Settings, hrvEntries: HrvEntry[] = []) {
   const m = settings.athleteMetrics;
   const items: { key: string; label: string; href: string }[] = [];
   if (m.vo2Max == null || m.vo2Max <= 0) {
@@ -233,14 +234,9 @@ export function dataChallengeItems(settings: IronMan2030Settings) {
   if (m.carbsPerHour == null || m.carbsPerHour <= 0) {
     items.push({ key: "carbs", label: "Sacharidy při zátěži (g/h)", href: "/nutrition" });
   }
-  if (!m.hrvLastDate) {
-    items.push({ key: "hrv", label: "HRV trend (7+ dní)", href: "/body-metrics" });
-  } else {
-    const last = parseDateKey(m.hrvLastDate);
-    const days = (Date.now() - last.getTime()) / (24 * 3600 * 1000);
-    if (days > 7) {
-      items.push({ key: "hrv", label: "HRV trend (7+ dní)", href: "/body-metrics" });
-    }
+  const hrvTrend = computeHrvTrend(hrvEntries);
+  if (hrvTrend.daysInWindow < 3) {
+    items.push({ key: "hrv", label: "HRV trend (min. 3 dny / 7 dní)", href: "/body-metrics#hrv" });
   }
   return items;
 }

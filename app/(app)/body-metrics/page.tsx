@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { HrvPanel } from "@/components/fitdenik/hrv-panel";
 import { getRepositories } from "@/lib/repositories/provider";
 import type { BodyMeasurementEntry } from "@/lib/types";
 
@@ -66,6 +67,8 @@ export default function BodyMetricsPage() {
           Nové měření
         </Link>
       </div>
+
+      <HrvPanel />
 
       <div className="overflow-hidden rounded-xl border border-ew-border bg-ew-panel">
         {errorMessage && (

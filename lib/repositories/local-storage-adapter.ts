@@ -4,7 +4,7 @@ import {
   nutritionEntries,
   trainingSessions,
 } from "@/lib/mock-data";
-import type { BenchmarkResult, BodyMeasurementEntry, NutritionEntry, TrainingSession } from "@/lib/types";
+import type { BenchmarkResult, BodyMeasurementEntry, HrvEntry, NutritionEntry, TrainingSession } from "@/lib/types";
 import { getFitdenikUserId } from "@/lib/fitdenik-user-id";
 import type {
   AppRepositories,
@@ -12,6 +12,8 @@ import type {
   BenchmarkRepository,
   BodyMeasurementInput,
   BodyMeasurementRepository,
+  HrvEntryInput,
+  HrvRepository,
   NutritionRepository,
   TrainingRepository,
 } from "@/lib/repositories/contracts";
@@ -21,6 +23,7 @@ const TRAINING_STORAGE_KEY = "fitdenik.training.v1";
 const NUTRITION_STORAGE_KEY = "fitdenik.nutrition.v1";
 const BENCHMARK_STORAGE_KEY = "fitdenik.benchmarks.v1";
 const BODY_MEASUREMENTS_KEY = "fitdenik.bodyMeasurements.v1";
+const HRV_ENTRIES_KEY = "fitdenik.hrvEntries.v1";
 
 function readStorage<T>(key: string): T[] | null {
   if (typeof window === "undefined") return null;
@@ -99,12 +102,40 @@ const bodyMeasurementsRepo: BodyMeasurementRepository = {
   },
 };
 
+const hrvRepo: HrvRepository = {
+  list() {
+    return readStorage<HrvEntry>(HRV_ENTRIES_KEY) ?? [];
+  },
+  create(input: HrvEntryInput) {
+    const next: HrvEntry = { id: crypto.randomUUID(), userId: getFitdenikUserId(), ...input };
+    writeStorage(HRV_ENTRIES_KEY, [next, ...this.list()]);
+    return next;
+  },
+  createMany(inputs: HrvEntryInput[]) {
+    const created = inputs.map((input) => ({
+      id: crypto.randomUUID(),
+      userId: getFitdenikUserId(),
+      ...input,
+    }));
+    writeStorage(HRV_ENTRIES_KEY, [...created, ...this.list()]);
+    return created;
+  },
+  delete(id: string) {
+    const list = this.list();
+    const next = list.filter((e) => e.id !== id);
+    if (next.length === list.length) return false;
+    writeStorage(HRV_ENTRIES_KEY, next);
+    return true;
+  },
+};
+
 function getBaselineDefaults(): BaselineInput {
   return createBaselineDefaults();
 }
 
 export const localStorageRepositories: AppRepositories = {
   bodyMeasurements: bodyMeasurementsRepo,
+  hrv: hrvRepo,
   baseline: {
     getDefaults() {
       return getBaselineDefaults();

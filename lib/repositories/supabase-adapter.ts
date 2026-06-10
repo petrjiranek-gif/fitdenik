@@ -60,4 +60,18 @@ export const supabaseRepositories: AppRepositories = {
       throw new Error("Měření přes POST /api/body-measurements.");
     },
   },
+  hrv: {
+    list() {
+      return [];
+    },
+    create() {
+      throw new Error("HRV přes POST /api/hrv-entries.");
+    },
+    createMany() {
+      throw new Error("HRV hromadně přes POST /api/hrv-entries.");
+    },
+    delete() {
+      throw new Error("HRV přes DELETE /api/hrv-entries.");
+    },
+  },
 };

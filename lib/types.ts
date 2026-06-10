@@ -76,6 +76,22 @@ export interface BodyMeasurementEntry {
   notes: string;
 }
 
+/** Zdroj záznamu HRV (ms) — Apple Watch, jiná app nebo ručně. */
+export type HrvSource = "manual" | "apple_watch" | "other_app";
+
+export interface HrvEntry {
+  id: string;
+  userId: string;
+  /** ISO 8601 — typicky ranní měření po spánku. */
+  recordedAt: string;
+  /** HRV v milisekundách (RMSSD / hodnota z Apple Zdraví). */
+  hrvMs: number;
+  source: HrvSource;
+  /** Např. Garmin, Whoop — při source=other_app. */
+  sourceLabel?: string;
+  notes?: string;
+}
+
 /** Disciplína v modulu Iron Man 2030 (volitelné přepsání sportu z deníku). */
 export type IronManDisciplineTag =
   | "swim"

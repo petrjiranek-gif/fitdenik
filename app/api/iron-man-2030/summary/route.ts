@@ -13,7 +13,8 @@ import { IRON_MAN_PROJECT_START } from "@/lib/iron-man-2030/constants";
 import { mergeIronManState } from "@/lib/iron-man-2030/state-merge";
 import { coerceSportType } from "@/lib/sport-type";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import type { BodyMeasurementEntry, TrainingSession } from "@/lib/types";
+import { computeHrvTrend } from "@/lib/hrv/compute";
+import type { BodyMeasurementEntry, HrvEntry, TrainingSession } from "@/lib/types";
 
 type TrainingRow = {
   id: string;
@@ -55,6 +56,19 @@ function toSession(row: TrainingRow): TrainingSession {
   };
 }
 
+function toHrvEntry(row: { id: string; user_id: string; payload: Record<string, unknown> }): HrvEntry {
+  const p = row.payload;
+  return {
+    id: row.id,
+    userId: row.user_id,
+    recordedAt: String(p.recordedAt ?? ""),
+    hrvMs: Math.round(Number(p.hrvMs)) || 0,
+    source: (p.source as HrvEntry["source"]) ?? "manual",
+    sourceLabel: p.sourceLabel ? String(p.sourceLabel) : undefined,
+    notes: p.notes ? String(p.notes) : undefined,
+  };
+}
+
 function toBodyEntry(row: { id: string; user_id: string; payload: Record<string, unknown> }): BodyMeasurementEntry {
   const p = row.payload;
   return {
@@ -93,7 +107,7 @@ export async function GET() {
 
   const uid = getFitdenikUserId();
 
-  const [stateRes, trainingRes, bodyRes] = await Promise.all([
+  const [stateRes, trainingRes, bodyRes, hrvRes] = await Promise.all([
     supabase.from("iron_man_2030_state").select("data").eq("user_id", uid).maybeSingle(),
     supabase
       .from("training_sessions")
@@ -103,6 +117,7 @@ export async function GET() {
       .order("date", { ascending: false })
       .limit(500),
     supabase.from("body_measurement_entries").select("id, user_id, payload").eq("user_id", uid).limit(200),
+    supabase.from("hrv_entries").select("id, user_id, payload").eq("user_id", uid).limit(400),
   ]);
 
   if (trainingRes.error) {
@@ -114,6 +129,9 @@ export async function GET() {
   const bodyEntries = ((bodyRes.data ?? []) as { id: string; user_id: string; payload: Record<string, unknown> }[]).map(
     toBodyEntry,
   );
+  const hrvEntries = ((hrvRes.data ?? []) as { id: string; user_id: string; payload: Record<string, unknown> }[]).map(
+    toHrvEntry,
+  );
 
   const phase = getActivePhase();
   const calendar = mergeCalendarWithTrainings(state.calendar, sessions);
@@ -122,6 +140,8 @@ export async function GET() {
     state: { ...state, calendar },
     sessions,
     bodyEntries,
+    hrvEntries,
+    hrvTrend: computeHrvTrend(hrvEntries),
     phase,
     projectStats: computeProjectStats(sessions),
     disciplineHours: computeDisciplineBreakdown(sessions, "hours"),

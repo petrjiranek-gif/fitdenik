@@ -1,6 +1,7 @@
 import type {
   BenchmarkResult,
   BodyMeasurementEntry,
+  HrvEntry,
   NutritionEntry,
   TrainingSession,
   UserProfile,
@@ -80,10 +81,20 @@ export interface BodyMeasurementRepository {
   create(input: BodyMeasurementInput): BodyMeasurementEntry;
 }
 
+export type HrvEntryInput = Omit<HrvEntry, "id" | "userId">;
+
+export interface HrvRepository {
+  list(): HrvEntry[];
+  create(input: HrvEntryInput): HrvEntry;
+  createMany(inputs: HrvEntryInput[]): HrvEntry[];
+  delete(id: string): boolean;
+}
+
 export interface AppRepositories {
   baseline: BaselineRepository;
   training: TrainingRepository;
   nutrition: NutritionRepository;
   benchmarks: BenchmarkRepository;
   bodyMeasurements: BodyMeasurementRepository;
+  hrv: HrvRepository;
 }

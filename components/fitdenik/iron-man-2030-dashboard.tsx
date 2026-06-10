@@ -43,7 +43,8 @@ import type {
   IronManMeditationSession,
 } from "@/lib/iron-man-2030/types";
 import { getRepositories } from "@/lib/repositories/provider";
-import type { BodyMeasurementEntry, TrainingSession } from "@/lib/types";
+import { computeHrvTrend } from "@/lib/hrv/compute";
+import type { BodyMeasurementEntry, HrvEntry, TrainingSession } from "@/lib/types";
 
 function cardClass(extra = "") {
   return `rounded-xl border border-ew-border bg-ew-panel p-4 ${extra}`;
@@ -165,6 +166,7 @@ export function IronMan2030Dashboard() {
   );
   const [sessions, setSessions] = useState<TrainingSession[]>([]);
   const [bodyEntries, setBodyEntries] = useState<BodyMeasurementEntry[]>([]);
+  const [hrvEntries, setHrvEntries] = useState<HrvEntry[]>([]);
   const [loading, setLoading] = useState(useSupabase);
   const [error, setError] = useState<string | null>(null);
   const [disciplineMode, setDisciplineMode] = useState<"hours" | "calories">("hours");
@@ -206,10 +208,12 @@ export function IronMan2030Dashboard() {
           state: IronMan2030State;
           sessions: TrainingSession[];
           bodyEntries: BodyMeasurementEntry[];
+          hrvEntries?: HrvEntry[];
         };
         setState(j.state);
         setSessions(j.sessions);
         setBodyEntries(j.bodyEntries);
+        setHrvEntries(j.hrvEntries ?? []);
         setError(null);
       } catch {
         setError("Nepodařilo se načíst modul.");
@@ -220,6 +224,7 @@ export function IronMan2030Dashboard() {
       setState(readIronManLocalState());
       setSessions(repositories.training.list().filter((s) => s.date >= IRON_MAN_PROJECT_START));
       setBodyEntries(repositories.bodyMeasurements.list());
+      setHrvEntries(repositories.hrv.list());
     }
   }, [repositories, useSupabase]);
 
@@ -238,7 +243,8 @@ export function IronMan2030Dashboard() {
   const weightProgress = useMemo(() => computeWeightProgress(bodyEntries), [bodyEntries]);
   const phaseCompletion = useMemo(() => computePhaseCompletion(sessions, phase, phase.id), [sessions, phase]);
   const missed = useMemo(() => missedDaysWithReasons({ ...state, calendar }, sessions), [state, calendar, sessions]);
-  const challenges = useMemo(() => dataChallengeItems(settings), [settings]);
+  const hrvTrend = useMemo(() => computeHrvTrend(hrvEntries), [hrvEntries]);
+  const challenges = useMemo(() => dataChallengeItems(settings, hrvEntries), [settings, hrvEntries]);
 
   const monthFrom = toDateKey(calendarMonth);
   const monthEnd = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0);
@@ -682,6 +688,24 @@ export function IronMan2030Dashboard() {
         />
       </section>
 
+      <section className={cardClass()}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 className="font-semibold text-zinc-100">HRV trend</h3>
+            <p className="mt-1 text-xs text-zinc-500">Posledních 7 dní — vstup pro AI trenéra.</p>
+          </div>
+          <Link href="/body-metrics#hrv" className="text-xs text-ew-blue-light underline">
+            Spravovat HRV
+          </Link>
+        </div>
+        <p className="mt-3 text-2xl font-semibold capitalize text-zinc-100">{hrvTrend.coachLabel}</p>
+        <p className="mt-1 text-sm text-zinc-400">
+          {hrvTrend.daysInWindow}/7 dní s daty
+          {hrvTrend.avg7d != null ? ` · průměr ${hrvTrend.avg7d} ms` : ""}
+          {hrvTrend.latestMs != null ? ` · poslední ${hrvTrend.latestMs} ms` : ""}
+        </p>
+      </section>
+
       {/* Data challenges */}
       {challenges.length > 0 && (
         <section className="rounded-xl border border-amber-500/40 bg-amber-950/20 p-4">
@@ -781,7 +805,6 @@ function MetricsInlineForm({
           ftpWatts: Number(ftp) || undefined,
           swim100mSec: Number(swim) || undefined,
           carbsPerHour: Number(carbs) || undefined,
-          hrvLastDate: new Date().toISOString().slice(0, 10),
         });
       }}
     >

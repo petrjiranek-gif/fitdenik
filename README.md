@@ -38,6 +38,23 @@ Nové tabulky pro baseline a měření těla: spusť SQL ze souboru `supabase/mi
 
 Modul **Iron Man 2030**: spusť `supabase/migrations/002_iron_man_2030.sql` (stav modulu + sloupce `iron_man_2030_project` / `iron_man_discipline` na `training_sessions`). API: `GET/PATCH /api/iron-man-2030`, `GET /api/iron-man-2030/summary`. Stránka `/ironman-2030`.
 
+**HRV** (AI trenér): spusť `supabase/migrations/003_hrv_entries.sql`. API: `GET/POST/DELETE /api/hrv-entries`. UI: `/body-metrics#hrv`.
+
+### AI Trenér (Iron Man 2030)
+
+Server-side klíč (nikdy `NEXT_PUBLIC_`):
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+Lokálně do `.env.local`, na Vercelu do **Settings → Environment Variables** (Production). Po restartu dev serveru:
+
+- `GET /api/iron-man-2030/coach/health` — je klíč nastavený?
+- `POST /api/iron-man-2030/coach/test` — testovací ping na Claude API
+
+Vzor proměnných: `.env.example`
+
 ## Supabase minimal setup (training API)
 
 Pro prvni live endpoint nastav:

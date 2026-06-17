@@ -150,6 +150,14 @@ function weekdayShortLabel(indexMondayFirst: number): string {
   return base.toLocaleDateString("cs-CZ", { weekday: "short" });
 }
 
+function escapeCsv(value: string | number): string {
+  const raw = String(value ?? "");
+  if (raw.includes('"') || raw.includes(",") || raw.includes("\n")) {
+    return `"${raw.replace(/"/g, '""')}"`;
+  }
+  return raw;
+}
+
 function SportPieChart({ bySport }: { bySport: { sport: string; count: number }[] }) {
   const total = bySport.reduce((a, b) => a + b.count, 0) || 1;
   let acc = 0;
@@ -224,6 +232,13 @@ export function TrainingOverview() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [calendarSportFilter, setCalendarSportFilter] = useState<string>("vše");
   const [ironManFilterOnly, setIronManFilterOnly] = useState(false);
+  const [exportFrom, setExportFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return toDateKey(d);
+  });
+  const [exportTo, setExportTo] = useState(() => toDateKey(new Date()));
+  const [exportMessage, setExportMessage] = useState<string | null>(null);
 
   const reloadLocal = useCallback(() => {
     if (!useSupabase) setSessions(repositories.training.list());
@@ -357,6 +372,110 @@ export function TrainingOverview() {
       .sort((a, b) => b.kpm - a.kpm)
       .slice(0, 8);
   }, [sessions]);
+
+  const exportSessions = useMemo(() => {
+    const from = exportFrom <= exportTo ? exportFrom : exportTo;
+    const to = exportFrom <= exportTo ? exportTo : exportFrom;
+    return [...sessions]
+      .filter((s) => s.date >= from && s.date <= to)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title, "cs-CZ"));
+  }, [sessions, exportFrom, exportTo]);
+
+  const exportSummary = useMemo(() => {
+    const sportMap = new Map<string, number>();
+    let totalMin = 0;
+    let totalKcal = 0;
+    for (const s of exportSessions) {
+      totalMin += s.durationMin;
+      totalKcal += s.calories;
+      sportMap.set(s.sportType, (sportMap.get(s.sportType) ?? 0) + 1);
+    }
+    const bySport = [...sportMap.entries()]
+      .map(([sport, count]) => ({ sport, count }))
+      .sort((a, b) => b.count - a.count);
+    return {
+      count: exportSessions.length,
+      totalMin,
+      totalKcal,
+      bySport,
+    };
+  }, [exportSessions]);
+
+  const buildCoachExportText = useCallback(() => {
+    const from = exportFrom <= exportTo ? exportFrom : exportTo;
+    const to = exportFrom <= exportTo ? exportTo : exportFrom;
+    const lines: string[] = [];
+    lines.push(`FitDenik — export tréninků pro trenéra`);
+    lines.push(`Období: ${from} až ${to}`);
+    lines.push(`Počet tréninků: ${exportSummary.count}`);
+    lines.push(`Celkový čas: ${exportSummary.totalMin} min (${(exportSummary.totalMin / 60).toFixed(1)} h)`);
+    lines.push(`Celkové kalorie: ${exportSummary.totalKcal} kcal`);
+    if (exportSummary.bySport.length > 0) {
+      lines.push(`Sporty: ${exportSummary.bySport.map((x) => `${sportTypeLabel(x.sport as SportType)} ${x.count}x`).join(", ")}`);
+    }
+    lines.push("");
+    lines.push("Detaily tréninků:");
+    for (const s of exportSessions) {
+      lines.push(
+        `- ${s.date} | ${sportTypeLabel(s.sportType)} | ${s.title} | ${s.durationMin} min | ${s.calories} kcal | ${s.distanceKm} km | IM2030: ${s.ironMan2030Project ? "ano" : "ne"}${s.notes ? ` | ${stripLiveWorkoutLinkMarker(s.notes)}` : ""}`,
+      );
+    }
+    return lines.join("\n");
+  }, [exportFrom, exportTo, exportSummary, exportSessions]);
+
+  const buildCoachExportCsv = useCallback(() => {
+    const header = [
+      "date",
+      "sport",
+      "title",
+      "duration_min",
+      "calories",
+      "distance_km",
+      "kcal_per_min",
+      "ironman_2030_project",
+      "notes",
+    ];
+    const rows = exportSessions.map((s) => [
+      s.date,
+      sportTypeLabel(s.sportType),
+      s.title,
+      s.durationMin,
+      s.calories,
+      s.distanceKm,
+      s.durationMin > 0 ? kcalPerMin(s).toFixed(1) : "0.0",
+      s.ironMan2030Project ? "yes" : "no",
+      stripLiveWorkoutLinkMarker(s.notes),
+    ]);
+    return [header, ...rows].map((row) => row.map((v) => escapeCsv(v)).join(",")).join("\n");
+  }, [exportSessions]);
+
+  const downloadExport = useCallback(
+    (kind: "txt" | "csv") => {
+      const content = kind === "txt" ? buildCoachExportText() : buildCoachExportCsv();
+      const blob = new Blob([content], { type: kind === "txt" ? "text/plain;charset=utf-8" : "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      const from = exportFrom <= exportTo ? exportFrom : exportTo;
+      const to = exportFrom <= exportTo ? exportTo : exportFrom;
+      a.href = url;
+      a.download = `fitdenik-trenink-export-${from}_az_${to}.${kind}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setExportMessage(kind === "txt" ? "TXT export stažen." : "CSV export stažen.");
+    },
+    [buildCoachExportCsv, buildCoachExportText, exportFrom, exportTo],
+  );
+
+  const copyExportText = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(buildCoachExportText());
+      setExportMessage("Export zkopírován do schránky.");
+    } catch {
+      setExportMessage("Nepodařilo se zkopírovat export.");
+    }
+  }, [buildCoachExportText]);
 
   const mastersStats = useMemo(() => {
     const ref = CROSSFIT_MASTERS_REFERENCE[mastersDivision];
@@ -621,6 +740,58 @@ export function TrainingOverview() {
       <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
         <h3 className="mb-3 text-base font-semibold text-zinc-100">Rozložení podle sportu</h3>
         <SportPieChart bySport={stats.bySport} />
+      </section>
+
+      <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
+        <h3 className="text-base font-semibold text-zinc-100">Export tréninků pro trenéra</h3>
+        <p className="mt-1 text-xs text-ew-muted">
+          Vyber období a stáhni detaily tréninků (datum, sport, délka, kalorie, poznámky) pro analýzu.
+        </p>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="grid gap-1 text-sm">
+            <span className="text-zinc-400">Od</span>
+            <input type="date" value={exportFrom} onChange={(e) => setExportFrom(e.target.value)} className={formInputClass} />
+          </label>
+          <label className="grid gap-1 text-sm">
+            <span className="text-zinc-400">Do</span>
+            <input type="date" value={exportTo} onChange={(e) => setExportTo(e.target.value)} className={formInputClass} />
+          </label>
+          <div className="rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-xs text-zinc-300">
+            <div>Tréninků: {exportSummary.count}</div>
+            <div>Čas: {exportSummary.totalMin} min</div>
+            <div>Kalorie: {exportSummary.totalKcal} kcal</div>
+          </div>
+          <div className="rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-xs text-zinc-300">
+            Sporty:{" "}
+            {exportSummary.bySport.length > 0
+              ? exportSummary.bySport.map((x) => `${sportTypeLabel(x.sport as SportType)} ${x.count}x`).join(", ")
+              : "—"}
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={copyExportText}
+            className="rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-sm text-zinc-200 hover:border-ew-blue-light"
+          >
+            Kopírovat text
+          </button>
+          <button
+            type="button"
+            onClick={() => downloadExport("txt")}
+            className="rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-sm text-zinc-200 hover:border-ew-blue-light"
+          >
+            Stáhnout TXT
+          </button>
+          <button
+            type="button"
+            onClick={() => downloadExport("csv")}
+            className="rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-sm text-zinc-200 hover:border-ew-blue-light"
+          >
+            Stáhnout CSV
+          </button>
+        </div>
+        {exportMessage && <p className="mt-2 text-xs text-emerald-300">{exportMessage}</p>}
       </section>
 
       <section className="rounded-xl border border-ew-border bg-ew-panel p-4">

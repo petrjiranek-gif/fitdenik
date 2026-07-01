@@ -8,9 +8,10 @@ import { coerceSportType, sportTypeLabel, SPORT_TYPE_OPTIONS } from "@/lib/sport
 import { LiveWorkoutDetailModal } from "@/components/fitdenik/live-workout-detail-modal";
 import type { LiveWorkoutLogEntry } from "@/lib/live-workout/persist-log";
 import {
-  embedLiveWorkoutLinkInNotes,
-  extractLiveWorkoutIdFromNotes,
-  resolveLiveWorkoutForSession,
+  describeLiveWorkoutEntry,
+  embedLiveWorkoutLinksInNotes,
+  extractAllLiveWorkoutIdsFromNotes,
+  resolveLiveWorkoutsForSession,
   stripLiveWorkoutLinkMarker,
 } from "@/lib/live-workout/training-link";
 import type { BenchmarkResult, SportType, TrainingSession } from "@/lib/types";
@@ -330,11 +331,11 @@ export function TrainingOverview() {
     [filteredSessions],
   );
 
-  const liveLogBySessionId = useMemo(() => {
-    const map = new Map<string, LiveWorkoutLogEntry>();
+  const liveLogsBySessionId = useMemo(() => {
+    const map = new Map<string, LiveWorkoutLogEntry[]>();
     for (const s of sessions) {
-      const linked = resolveLiveWorkoutForSession(s);
-      if (linked) map.set(s.id, linked);
+      const linked = resolveLiveWorkoutsForSession(s);
+      if (linked.length > 0) map.set(s.id, linked);
     }
     return map;
   }, [sessions]);
@@ -985,14 +986,20 @@ export function TrainingOverview() {
                       {stripLiveWorkoutLinkMarker(s.notes) || "—"}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2">
-                      {liveLogBySessionId.has(s.id) ? (
-                        <button
-                          type="button"
-                          onClick={() => setViewingLiveWorkout(liveLogBySessionId.get(s.id)!)}
-                          className="text-xs text-sky-300 hover:underline"
-                        >
-                          Cviky / WOD
-                        </button>
+                      {liveLogsBySessionId.has(s.id) ? (
+                        <div className="flex flex-col gap-1">
+                          {liveLogsBySessionId.get(s.id)!.map((entry) => (
+                            <button
+                              key={entry.id}
+                              type="button"
+                              onClick={() => setViewingLiveWorkout(entry)}
+                              className="text-left text-xs text-sky-300 hover:underline"
+                              title={describeLiveWorkoutEntry(entry)}
+                            >
+                              {entry.wodName}
+                            </button>
+                          ))}
+                        </div>
                       ) : (
                         <span className="text-ew-muted">—</span>
                       )}
@@ -1036,7 +1043,7 @@ export function TrainingOverview() {
         <EditTrainingModal
           key={editing.id}
           session={editing}
-          linkedLiveWorkout={liveLogBySessionId.get(editing.id) ?? null}
+          linkedLiveWorkouts={liveLogsBySessionId.get(editing.id) ?? []}
           onViewLiveWorkout={setViewingLiveWorkout}
           saving={saving}
           error={saveError}
@@ -1075,7 +1082,7 @@ export function TrainingOverview() {
 
 function EditTrainingModal({
   session,
-  linkedLiveWorkout,
+  linkedLiveWorkouts,
   onViewLiveWorkout,
   saving,
   error,
@@ -1083,7 +1090,7 @@ function EditTrainingModal({
   onSave,
 }: {
   session: TrainingSession;
-  linkedLiveWorkout: LiveWorkoutLogEntry | null;
+  linkedLiveWorkouts: LiveWorkoutLogEntry[];
   onViewLiveWorkout: (entry: LiveWorkoutLogEntry) => void;
   saving: boolean;
   error: string | null;
@@ -1103,29 +1110,34 @@ function EditTrainingModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="dialog" aria-modal>
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-ew-border bg-ew-panel p-4 shadow-xl">
         <h3 className="text-lg font-semibold text-white">Upravit trénink</h3>
-        {linkedLiveWorkout && (
+        {linkedLiveWorkouts.length > 0 && (
           <div className="mt-3 rounded-lg border border-sky-500/25 bg-sky-950/20 px-3 py-2 text-sm text-zinc-300">
-            <p>
-              Propojený živý trénink:{" "}
-              <span className="font-medium text-sky-200">{linkedLiveWorkout.wodName}</span>
+            <p className="mb-2">
+              Propojené živé tréninky ({linkedLiveWorkouts.length}):
             </p>
-            <button
-              type="button"
-              onClick={() => onViewLiveWorkout(linkedLiveWorkout)}
-              className="mt-1 text-xs text-ew-blue-light underline"
-            >
-              Zobrazit cviky a detail z aplikace
-            </button>
+            <ul className="space-y-2">
+              {linkedLiveWorkouts.map((entry) => (
+                <li key={entry.id} className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium text-sky-200">{entry.wodName}</span>
+                  <button
+                    type="button"
+                    onClick={() => onViewLiveWorkout(entry)}
+                    className="text-xs text-ew-blue-light underline"
+                  >
+                    Detail cviků
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
         <form
           className="mt-4 grid gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            const liveId = extractLiveWorkoutIdFromNotes(session.notes);
-            const notesToSave = liveId
-              ? embedLiveWorkoutLinkInNotes(notes, liveId)
-              : notes;
+            const liveIds = extractAllLiveWorkoutIdsFromNotes(session.notes);
+            const notesToSave =
+              liveIds.length > 0 ? embedLiveWorkoutLinksInNotes(notes, liveIds) : notes;
             void onSave({
               date,
               title,

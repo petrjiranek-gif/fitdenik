@@ -1,7 +1,7 @@
 import type { LiveWorkoutLogEntry } from "@/lib/live-workout/persist-log";
 import {
   findLiveWorkoutById,
-  linkLiveWorkoutToTrainingSession,
+  linkLiveWorkoutsToTrainingSession,
   readLiveWorkoutLogs,
 } from "@/lib/live-workout/persist-log";
 import type { TrainingSession } from "@/lib/types";
@@ -34,23 +34,66 @@ export function stripLiveWorkoutLinkMarker(notes: string): string {
   return notes.replace(LIVE_WORKOUT_LINK_RE, "").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+export function extractAllLiveWorkoutIdsFromNotes(notes: string): string[] {
+  const ids: string[] = [];
+  const re = new RegExp(LIVE_WORKOUT_LINK_RE.source, "gi");
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(notes)) !== null) {
+    if (m[1] && !ids.includes(m[1])) ids.push(m[1]);
+  }
+  return ids;
+}
+
+/** První propojený živý trénink (zpětná kompatibilita). */
 export function extractLiveWorkoutIdFromNotes(notes: string): string | null {
-  const m = notes.match(/\[\[fitdenik-live-workout:([0-9a-f-]{36})\]\]/i);
-  return m?.[1] ?? null;
+  return extractAllLiveWorkoutIdsFromNotes(notes)[0] ?? null;
+}
+
+export function embedLiveWorkoutLinksInNotes(notes: string, liveWorkoutIds: string[]): string {
+  const unique = [...new Set(liveWorkoutIds.filter(Boolean))];
+  const base = stripLiveWorkoutLinkMarker(notes);
+  if (unique.length === 0) return base;
+  const markers = unique.map((id) => `[[fitdenik-live-workout:${id}]]`).join("\n");
+  return base ? `${base}\n\n${markers}` : markers;
 }
 
 export function embedLiveWorkoutLinkInNotes(notes: string, liveWorkoutId: string): string {
-  const base = stripLiveWorkoutLinkMarker(notes);
-  const marker = `[[fitdenik-live-workout:${liveWorkoutId}]]`;
-  return base ? `${base}\n\n${marker}` : marker;
+  return embedLiveWorkoutLinksInNotes(notes, [liveWorkoutId]);
+}
+
+function uniqueLiveWorkoutEntries(entries: Array<LiveWorkoutLogEntry | null | undefined>): LiveWorkoutLogEntry[] {
+  const out: LiveWorkoutLogEntry[] = [];
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    if (!entry || seen.has(entry.id)) continue;
+    seen.add(entry.id);
+    out.push(entry);
+  }
+  return out;
+}
+
+export function resolveLiveWorkoutsForSession(session: TrainingSession): LiveWorkoutLogEntry[] {
+  const bySession = readLiveWorkoutLogs().filter((e) => e.linkedTrainingSessionId === session.id);
+  const fromNotes = extractAllLiveWorkoutIdsFromNotes(session.notes)
+    .map((id) => findLiveWorkoutById(id))
+    .filter((e): e is LiveWorkoutLogEntry => e != null);
+  return uniqueLiveWorkoutEntries([...bySession, ...fromNotes]);
 }
 
 export function resolveLiveWorkoutForSession(session: TrainingSession): LiveWorkoutLogEntry | null {
-  const bySession = readLiveWorkoutLogs().find((e) => e.linkedTrainingSessionId === session.id);
-  if (bySession) return bySession;
-  const fromNotes = extractLiveWorkoutIdFromNotes(session.notes);
-  if (fromNotes) return findLiveWorkoutById(fromNotes);
-  return null;
+  return resolveLiveWorkoutsForSession(session)[0] ?? null;
+}
+
+export function attachLiveWorkoutsToTraining(
+  liveWorkoutIds: string[],
+  sessionId: string,
+  notes: string,
+): string {
+  const unique = [...new Set(liveWorkoutIds.filter(Boolean))];
+  if (unique.length > 0) {
+    linkLiveWorkoutsToTrainingSession(unique, sessionId);
+  }
+  return embedLiveWorkoutLinksInNotes(notes, unique);
 }
 
 export function attachLiveWorkoutToTraining(
@@ -58,8 +101,16 @@ export function attachLiveWorkoutToTraining(
   sessionId: string,
   notes: string,
 ): string {
-  linkLiveWorkoutToTrainingSession(liveWorkoutId, sessionId);
-  return embedLiveWorkoutLinkInNotes(notes, liveWorkoutId);
+  return attachLiveWorkoutsToTraining([liveWorkoutId], sessionId, notes);
+}
+
+export function parseLinkedLiveWorkoutIdsFromImport(data: Record<string, string | number>): string[] {
+  const multi = data.linkedLiveWorkoutIds;
+  if (typeof multi === "string" && multi.trim()) {
+    return [...new Set(multi.split(",").map((s) => s.trim()).filter(Boolean))];
+  }
+  const single = String(data.linkedLiveWorkoutId ?? "").trim();
+  return single ? [single] : [];
 }
 
 export function todayIsoDate(): string {

@@ -7,8 +7,9 @@ import { preprocessImageForOcr } from "@/lib/ocr-preprocess";
 import { LiveWorkoutDetailModal } from "@/components/fitdenik/live-workout-detail-modal";
 import { getRepositories } from "@/lib/repositories/provider";
 import {
-  attachLiveWorkoutToTraining,
+  attachLiveWorkoutsToTraining,
   describeLiveWorkoutEntry,
+  parseLinkedLiveWorkoutIdsFromImport,
 } from "@/lib/live-workout/training-link";
 import {
   findLiveWorkoutById,
@@ -172,7 +173,7 @@ export function ImportsCenter() {
   const [writingTrainingFromImportId, setWritingTrainingFromImportId] = useState<string | null>(null);
   const [openImportDetailId, setOpenImportDetailId] = useState<string | null>(null);
   const [liveWorkoutLogs, setLiveWorkoutLogs] = useState<LiveWorkoutLogEntry[]>([]);
-  const [selectedLiveWorkoutId, setSelectedLiveWorkoutId] = useState("");
+  const [selectedLiveWorkoutIds, setSelectedLiveWorkoutIds] = useState<string[]>([]);
   const [previewLiveWorkout, setPreviewLiveWorkout] = useState<LiveWorkoutLogEntry | null>(null);
   /** Po ruční změně sportu v dropdownu už OCR nepřepisuje workoutType (jinak „Walk“ z fotky přebije CrossFit). */
   const workoutTypeTouchedRef = useRef(false);
@@ -298,7 +299,9 @@ export function ImportsCenter() {
         (k) => [k, parsedData[k]] as [string, string | number],
       );
     }
-    return Object.entries(parsedData).filter(([key]) => key !== "linkedLiveWorkoutId");
+    return Object.entries(parsedData).filter(
+      ([key]) => key !== "linkedLiveWorkoutId" && key !== "linkedLiveWorkoutIds",
+    );
   }, [importTarget, parsedData]);
 
   const onFileChange = (file: File | null) => {
@@ -325,9 +328,10 @@ export function ImportsCenter() {
   const persistTrainingFromParsed = useCallback(
     async (
       data: ParsedData,
-      linkedLiveWorkoutId?: string,
+      linkedLiveWorkoutIds: string[] = [],
     ): Promise<{ ok: true; sessionId: string } | { ok: false; error: string }> => {
-      let fields = buildTrainingFieldsFromParsed(data);
+      const fields = buildTrainingFieldsFromParsed(data);
+      const uniqueLinkedIds = [...new Set(linkedLiveWorkoutIds.filter(Boolean))];
       if (useSupabase) {
         const response = await fetch("/api/training", {
           method: "POST",
@@ -340,8 +344,8 @@ export function ImportsCenter() {
         }
         const result = (await response.json()) as { session: TrainingSession };
         const sessionId = result.session.id;
-        if (linkedLiveWorkoutId) {
-          const notes = attachLiveWorkoutToTraining(linkedLiveWorkoutId, sessionId, fields.notes);
+        if (uniqueLinkedIds.length > 0) {
+          const notes = attachLiveWorkoutsToTraining(uniqueLinkedIds, sessionId, fields.notes);
           await fetch("/api/training", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
@@ -351,8 +355,8 @@ export function ImportsCenter() {
         return { ok: true, sessionId };
       }
       const session = repositories.training.create(fields);
-      if (linkedLiveWorkoutId) {
-        const notes = attachLiveWorkoutToTraining(linkedLiveWorkoutId, session.id, fields.notes);
+      if (uniqueLinkedIds.length > 0) {
+        const notes = attachLiveWorkoutsToTraining(uniqueLinkedIds, session.id, fields.notes);
         repositories.training.update(session.id, { notes });
       }
       return { ok: true, sessionId: session.id };
@@ -406,8 +410,8 @@ export function ImportsCenter() {
     setErrorMessage(null);
     setMessage(null);
     const parsedJsonForSave: ParsedData = { ...parsedData };
-    if (importTarget === "training" && selectedLiveWorkoutId) {
-      parsedJsonForSave.linkedLiveWorkoutId = selectedLiveWorkoutId;
+    if (importTarget === "training" && selectedLiveWorkoutIds.length > 0) {
+      parsedJsonForSave.linkedLiveWorkoutIds = selectedLiveWorkoutIds.join(",");
     }
 
     const response = await fetch("/api/imports", {
@@ -431,10 +435,7 @@ export function ImportsCenter() {
     setSavedImports((prev) => [result.importRecord, ...prev]);
 
     if (importTarget === "training") {
-      const t = await persistTrainingFromParsed(
-        parsedData,
-        selectedLiveWorkoutId || undefined,
-      );
+      const t = await persistTrainingFromParsed(parsedData, selectedLiveWorkoutIds);
       if (!t.ok) {
         setMessage("Import uložen.");
         setErrorMessage(
@@ -443,8 +444,8 @@ export function ImportsCenter() {
         return;
       }
       setMessage(
-        selectedLiveWorkoutId
-          ? "Import uložen, trénink zapsán a propojen s živým tréninkem z aplikace. Detail uvidíš v záložce Trénink."
+        selectedLiveWorkoutIds.length > 0
+          ? `Import uložen, trénink zapsán a propojen s ${selectedLiveWorkoutIds.length} živými tréninky z aplikace. Detail uvidíš v záložce Trénink.`
           : "Import uložen a trénink je zapsaný v záložce Trénink.",
       );
       refreshLiveWorkoutLogs();
@@ -464,17 +465,14 @@ export function ImportsCenter() {
     setErrorMessage(null);
     setMessage(null);
     if (importTarget === "training") {
-      const t = await persistTrainingFromParsed(
-        parsedData,
-        selectedLiveWorkoutId || undefined,
-      );
+      const t = await persistTrainingFromParsed(parsedData, selectedLiveWorkoutIds);
       if (!t.ok) {
         setErrorMessage(t.error);
         return;
       }
       setMessage(
-        selectedLiveWorkoutId
-          ? "Trénink vytvořen a propojen s živým tréninkem z aplikace."
+        selectedLiveWorkoutIds.length > 0
+          ? `Trénink vytvořen a propojen s ${selectedLiveWorkoutIds.length} živými tréninky z aplikace.`
           : "Trénink vytvořen z importu.",
       );
       refreshLiveWorkoutLogs();
@@ -496,8 +494,8 @@ export function ImportsCenter() {
     setMessage(null);
     setWritingTrainingFromImportId(item.id);
     const data = item.parsed_json as ParsedData;
-    const linkedId = String(data.linkedLiveWorkoutId ?? "").trim() || undefined;
-    const t = await persistTrainingFromParsed(data, linkedId);
+    const linkedIds = parseLinkedLiveWorkoutIdsFromImport(data);
+    const t = await persistTrainingFromParsed(data, linkedIds);
     setWritingTrainingFromImportId(null);
     if (!t.ok) {
       setErrorMessage(t.error);
@@ -620,14 +618,23 @@ export function ImportsCenter() {
             </p>
             {sourceApp === "apple-fitness" && (
               <p className="mb-3 text-xs text-sky-400/90">
-                Kondice / Apple Fitness neukazuje naše cviky (Blackjack, WOD, partie…) — níže můžeš propojit uložený živý
-                trénink z FitDeníku, abys měl detail k dispozici v Tréninku.
+                Kondice / Apple Fitness neukazuje naše cviky (Blackjack, WOD, partie…) — níže můžeš propojit jeden nebo více
+                uložených živých tréninků z FitDeníku (např. 3× 10×10) k jednomu screenshotu.
               </p>
             )}
             <div className="mb-4 rounded-lg border border-sky-500/25 bg-sky-950/20 p-3">
-              <label className="mb-1 block text-sm font-medium text-zinc-200" htmlFor="import-live-workout-link">
-                Připojit živý trénink z aplikace (volitelné)
-              </label>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-medium text-zinc-200">Připojit živé tréninky z aplikace (volitelné)</p>
+                {selectedLiveWorkoutIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLiveWorkoutIds([])}
+                    className="text-xs text-zinc-400 underline hover:text-zinc-200"
+                  >
+                    Zrušit výběr
+                  </button>
+                )}
+              </div>
               {liveWorkoutLogs.length === 0 ? (
                 <p className="text-xs text-zinc-500">
                   Zatím žádný uložený živý trénink. Nejdřív dokonči session v{" "}
@@ -637,34 +644,51 @@ export function ImportsCenter() {
                   , pak importuj screenshot z Kondice.
                 </p>
               ) : (
-                <>
-                  <select
-                    id="import-live-workout-link"
-                    value={selectedLiveWorkoutId}
-                    onChange={(e) => setSelectedLiveWorkoutId(e.target.value)}
-                    className="w-full rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-sm text-white"
-                  >
-                    <option value="">— nepřipojovat —</option>
-                    {liveWorkoutLogs.map((log) => (
-                      <option key={log.id} value={log.id}>
-                        {describeLiveWorkoutEntry(log)}
-                        {log.linkedTrainingSessionId ? " · už propojeno" : ""}
-                      </option>
-                    ))}
-                  </select>
-                  {selectedLiveWorkoutId ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const entry = findLiveWorkoutById(selectedLiveWorkoutId);
-                        if (entry) setPreviewLiveWorkout(entry);
-                      }}
-                      className="mt-2 text-xs text-ew-blue-light underline"
-                    >
-                      Náhled vybraného tréninku
-                    </button>
-                  ) : null}
-                </>
+                <div className="max-h-56 space-y-2 overflow-y-auto">
+                  {liveWorkoutLogs.map((log) => {
+                    const checked = selectedLiveWorkoutIds.includes(log.id);
+                    return (
+                      <label
+                        key={log.id}
+                        className={`flex cursor-pointer items-start gap-2 rounded-md border px-3 py-2 text-sm ${
+                          checked ? "border-sky-500/50 bg-sky-950/40" : "border-ew-border bg-ew-bg"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="mt-1"
+                          checked={checked}
+                          onChange={(e) => {
+                            setSelectedLiveWorkoutIds((prev) =>
+                              e.target.checked ? [...prev, log.id] : prev.filter((id) => id !== log.id),
+                            );
+                          }}
+                        />
+                        <span className="min-w-0 flex-1 text-zinc-200">
+                          {describeLiveWorkoutEntry(log)}
+                          {log.linkedTrainingSessionId ? (
+                            <span className="ml-1 text-xs text-zinc-500">· už propojeno</span>
+                          ) : null}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setPreviewLiveWorkout(log);
+                          }}
+                          className="shrink-0 text-xs text-ew-blue-light underline"
+                        >
+                          Náhled
+                        </button>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {selectedLiveWorkoutIds.length > 0 && (
+                <p className="mt-2 text-xs text-sky-300/90">
+                  Vybráno: {selectedLiveWorkoutIds.length} živých tréninků
+                </p>
               )}
             </div>
           </>

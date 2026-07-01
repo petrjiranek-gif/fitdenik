@@ -52,19 +52,20 @@ export function findLiveWorkoutById(id: string): LiveWorkoutLogEntry | null {
   return readLiveWorkoutLogs().find((e) => e.id === id) ?? null;
 }
 
-/** Propojí živý trénink se záznamem v deníku (localStorage). */
-export function linkLiveWorkoutToTrainingSession(liveWorkoutId: string, trainingSessionId: string): void {
+/** Propojí jeden nebo více živých tréninků se záznamem v deníku (localStorage). */
+export function linkLiveWorkoutsToTrainingSession(
+  liveWorkoutIds: string[],
+  trainingSessionId: string,
+): void {
   if (typeof window === "undefined") return;
+  const idSet = new Set(liveWorkoutIds.filter(Boolean));
+  if (idSet.size === 0) return;
   const logs = readLiveWorkoutLogs();
-  const next = logs.map((e) => {
-    if (e.linkedTrainingSessionId === trainingSessionId && e.id !== liveWorkoutId) {
-      const { linkedTrainingSessionId: _removed, ...rest } = e;
-      return rest as LiveWorkoutLogEntry;
-    }
-    if (e.id === liveWorkoutId) {
-      return { ...e, linkedTrainingSessionId: trainingSessionId };
-    }
-    return e;
-  });
+  const next = logs.map((e) => (idSet.has(e.id) ? { ...e, linkedTrainingSessionId: trainingSessionId } : e));
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+}
+
+/** @deprecated Použij linkLiveWorkoutsToTrainingSession — zachováno pro jednoduché volání. */
+export function linkLiveWorkoutToTrainingSession(liveWorkoutId: string, trainingSessionId: string): void {
+  linkLiveWorkoutsToTrainingSession([liveWorkoutId], trainingSessionId);
 }

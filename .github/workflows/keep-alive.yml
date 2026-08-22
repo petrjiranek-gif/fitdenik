@@ -1,0 +1,24 @@
+name: Keep-alive
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping production keep-alive
+        run: |
+          set -euo pipefail
+          BASE="https://fitdenik.ewattup.com"
+          code="$(curl -sS -o /tmp/keep-alive.json -w "%{http_code}" \
+            -A "FitDenik-keep-alive/github-actions" \
+            --max-time 30 \
+            "${BASE}/api/keep-alive")"
+          echo "HTTP ${code}"
+          cat /tmp/keep-alive.json
+          echo
+          test "${code}" = "200"

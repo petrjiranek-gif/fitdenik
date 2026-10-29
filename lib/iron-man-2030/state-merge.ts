@@ -1,3 +1,4 @@
+import { normalizeRaceWatch } from "@/lib/iron-man-2030/race-intel";
 import { DEFAULT_IRON_MAN_STATE, type IronMan2030State } from "@/lib/iron-man-2030/types";
 
 export function mergeIronManState(raw: unknown): IronMan2030State {
@@ -12,6 +13,10 @@ export function mergeIronManState(raw: unknown): IronMan2030State {
       athleteMetrics: {
         ...DEFAULT_IRON_MAN_STATE.settings.athleteMetrics,
         ...p.settings?.athleteMetrics,
+      },
+      raceWatch: {
+        moritzburg: normalizeRaceWatch(p.settings?.raceWatch?.moritzburg),
+        thun: normalizeRaceWatch(p.settings?.raceWatch?.thun),
       },
     },
     calendar: p.calendar ?? {},

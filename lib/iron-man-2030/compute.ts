@@ -79,17 +79,11 @@ export function computeCountdown(targetIso: string, now = new Date()): Countdown
 }
 
 export function race703TargetDate(settings: IronMan2030Settings): string {
-  if (settings.race703.registered && settings.race703.actualRaceDate) {
-    return settings.race703.actualRaceDate;
-  }
-  return IRON_MAN_RACE_703_DEFAULT;
+  return settings.race703.actualRaceDate || IRON_MAN_RACE_703_DEFAULT;
 }
 
 export function race1406TargetDate(settings: IronMan2030Settings): string {
-  if (settings.race1406.registered && settings.race1406.actualRaceDate) {
-    return settings.race1406.actualRaceDate;
-  }
-  return IRON_MAN_RACE_1406_DEFAULT;
+  return settings.race1406.actualRaceDate || IRON_MAN_RACE_1406_DEFAULT;
 }
 
 export function computeProjectStats(sessions: TrainingSession[]) {

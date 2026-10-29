@@ -6,6 +6,24 @@ export type IronManRaceRegistration = {
   actualRaceDate?: string;
 };
 
+/** Ruční hlídač závodu — termíny a poznámky, ne automatické novinky. */
+export type IronManStaySlot = {
+  name: string;
+  url: string;
+  distanceNote: string;
+  notes: string;
+};
+
+export type IronManRaceWatch = {
+  registrationOpensAt?: string;
+  registrationClosesAt?: string;
+  scoutFrom?: string;
+  scoutTo?: string;
+  /** Poznámky k ročníkům, klíč = rok ("2026"). */
+  editionNotes: Record<string, string>;
+  stays: IronManStaySlot[];
+};
+
 export type IronManAthleteMetrics = {
   vo2Max?: number;
   ftpWatts?: number;
@@ -20,6 +38,10 @@ export type IronMan2030Settings = {
   athleteMetrics: IronManAthleteMetrics;
   /** 0 = neděle … 1 = pondělí (výchozí regenerace = úterý → 2) */
   regenerationWeekday: number;
+  raceWatch: {
+    moritzburg: IronManRaceWatch;
+    thun: IronManRaceWatch;
+  };
 };
 
 export type IronManCalendarDay = {
@@ -101,6 +123,24 @@ export const DEFAULT_IRON_MAN_SETTINGS: IronMan2030Settings = {
   race1406: { registered: false },
   athleteMetrics: {},
   regenerationWeekday: 2,
+  raceWatch: {
+    moritzburg: {
+      editionNotes: {},
+      stays: [
+        { name: "", url: "", distanceNote: "", notes: "" },
+        { name: "", url: "", distanceNote: "", notes: "" },
+        { name: "", url: "", distanceNote: "", notes: "" },
+      ],
+    },
+    thun: {
+      editionNotes: {},
+      stays: [
+        { name: "", url: "", distanceNote: "", notes: "" },
+        { name: "", url: "", distanceNote: "", notes: "" },
+        { name: "", url: "", distanceNote: "", notes: "" },
+      ],
+    },
+  },
 };
 
 export const DEFAULT_IRON_MAN_STATE: IronMan2030State = {

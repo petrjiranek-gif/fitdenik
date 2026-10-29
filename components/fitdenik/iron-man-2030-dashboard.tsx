@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CoachCheckInPanel } from "@/components/fitdenik/coach-check-in-panel";
 import { CoachPlanPanel } from "@/components/fitdenik/coach-plan-panel";
+import { IronManRaceInfoSection } from "@/components/fitdenik/iron-man-race-info-section";
 import { formInputClass } from "@/components/fitdenik/form-fields";
 import {
   CALENDAR_DAY_META,
@@ -370,8 +371,8 @@ export function IronMan2030Dashboard() {
               </div>
             </div>
             <p className="mt-3 max-w-xl text-sm text-zinc-400">
-              Projekt od {new Date(`${IRON_MAN_PROJECT_START}T12:00:00`).toLocaleDateString("cs-CZ")} · půlka 2028
-              (výběr otevřený) · IRONMAN Thun 2030
+              Projekt od {new Date(`${IRON_MAN_PROJECT_START}T12:00:00`).toLocaleDateString("cs-CZ")} ·
+              Schloss-Triathlon Moritzburg 2028 · IRONMAN Thun 2030
             </p>
           </div>
           <div className="flex flex-col gap-2">
@@ -403,7 +404,7 @@ export function IronMan2030Dashboard() {
       {/* Countdowns */}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-3">
-          <CountdownDisplay label="Půlka 2028 (výběr otevřený)" targetDate={race703TargetDate(settings)} />
+          <CountdownDisplay label="Schloss-Triathlon Moritzburg" targetDate={race703TargetDate(settings)} />
           <label className="flex items-center gap-2 text-sm text-zinc-300">
             <input
               type="checkbox"
@@ -485,6 +486,8 @@ export function IronMan2030Dashboard() {
           )}
         </div>
       </div>
+
+      <IronManRaceInfoSection settings={settings} onChange={updateSettings} />
 
       {/* Project stats */}
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -879,15 +882,9 @@ export function IronMan2030Dashboard() {
             body: "Orientačně 1,9 / 90 / 21,1 km — není automaticky pravda u každého závodu. Limit a profil ověřit v propozicích.",
           },
           {
-            id: "moritzburg",
-            title: "Schloss-Triathlon Moritzburg (předběžný favorit 2028)",
-            body: "Komornější, rodinná atmosféra u Drážďan. Výběr zatím není definitivní. Ročník 2026 uváděl 1,9 / 87 / 21,1 km. Datum, profil a limity 2028 ověřit po zveřejnění propozic.",
-          },
-          {
-            id: "thun",
-            title: "IRONMAN Switzerland — Thun (2030)",
-            body: "Cíl k 50. narozeninám. Účast závisí na konání a podmínkách ročníku 2030. Historicky cca 180 km, +2200 m, dva okruhy. Pracovní odhad sjezdů není přesné GPX měření. Tempo odvozovat od skutečných výkonů, ne od dřepů.",
-            link: "https://www.ironman.com/im-switzerland",
+            id: "races",
+            title: "Vybrané závody",
+            body: "Půlka: Schloss-Triathlon Moritzburg 2028 (rekognoskace 2027). Full: IRONMAN Switzerland Thun 2030 (rekognoskace 2029). Detaily, hlídač registrace a ubytování jsou v sekci Info k závodům výše.",
           },
         ].map((block) => (
           <div key={block.id} className="mt-2 border-t border-ew-border pt-2">
@@ -900,17 +897,7 @@ export function IronMan2030Dashboard() {
               <span>{openInfo === block.id ? "−" : "+"}</span>
             </button>
             {openInfo === block.id && (
-              <p className="mt-2 text-sm text-zinc-400">
-                {block.body}
-                {"link" in block && block.link && (
-                  <>
-                    {" "}
-                    <a href={block.link} className="text-ew-blue-light hover:underline" target="_blank" rel="noreferrer">
-                      Oficiální stránka
-                    </a>
-                  </>
-                )}
-              </p>
+              <p className="mt-2 text-sm text-zinc-400">{block.body}</p>
             )}
           </div>
         ))}

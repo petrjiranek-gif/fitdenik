@@ -38,7 +38,7 @@ export const IRON_MAN_PHASES: IronManPhase[] = [
     to: "2028-07-24",
     sessionsPerWeek: [9, 11],
     hoursPerWeek: [10, 14],
-    primaryGoal: "půlka 2028 — výběr otevřený",
+    primaryGoal: "Schloss-Triathlon Moritzburg 2028",
   },
   {
     id: "peak",

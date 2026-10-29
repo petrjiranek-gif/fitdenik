@@ -38,7 +38,7 @@ export const IRON_MAN_PHASES: IronManPhase[] = [
     to: "2028-07-24",
     sessionsPerWeek: [9, 11],
     hoursPerWeek: [10, 14],
-    primaryGoal: "Mallorca 70.3 prep",
+    primaryGoal: "půlka 2028 — výběr otevřený",
   },
   {
     id: "peak",
@@ -47,7 +47,7 @@ export const IRON_MAN_PHASES: IronManPhase[] = [
     to: "2030-07-24",
     sessionsPerWeek: [10, 13],
     hoursPerWeek: [12, 16],
-    primaryGoal: "Plný Ironman 140.6",
+    primaryGoal: "IRONMAN Switzerland Thun — účast dle ročníku 2030",
   },
 ];
 

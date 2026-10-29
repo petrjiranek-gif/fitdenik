@@ -370,8 +370,8 @@ export function IronMan2030Dashboard() {
               </div>
             </div>
             <p className="mt-3 max-w-xl text-sm text-zinc-400">
-              Projekt od {new Date(`${IRON_MAN_PROJECT_START}T12:00:00`).toLocaleDateString("cs-CZ")} · Mallorca 70.3 ·
-              Ironman Thun 2030
+              Projekt od {new Date(`${IRON_MAN_PROJECT_START}T12:00:00`).toLocaleDateString("cs-CZ")} · půlka 2028
+              (výběr otevřený) · IRONMAN Thun 2030
             </p>
           </div>
           <div className="flex flex-col gap-2">
@@ -403,7 +403,7 @@ export function IronMan2030Dashboard() {
       {/* Countdowns */}
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="space-y-3">
-          <CountdownDisplay label="IRONMAN 70.3" targetDate={race703TargetDate(settings)} />
+          <CountdownDisplay label="Půlka 2028 (výběr otevřený)" targetDate={race703TargetDate(settings)} />
           <label className="flex items-center gap-2 text-sm text-zinc-300">
             <input
               type="checkbox"
@@ -444,7 +444,7 @@ export function IronMan2030Dashboard() {
           )}
         </div>
         <div className="space-y-3">
-          <CountdownDisplay label="IRONMAN 140.6" targetDate={race1406TargetDate(settings)} />
+          <CountdownDisplay label="IRONMAN Switzerland Thun" targetDate={race1406TargetDate(settings)} />
           <label className="flex items-center gap-2 text-sm text-zinc-300">
             <input
               type="checkbox"
@@ -870,24 +870,23 @@ export function IronMan2030Dashboard() {
         {[
           {
             id: "1406",
-            title: "Ironman 140.6",
-            body: "Plný Ironman = 3,8 km plavání + 180 km kolo + 42,2 km běh. Časový limit 17 hodin. Motto: Anything is Possible.",
+            title: "Plná distance",
+            body: "Přibližně 3,8 km plavání / 180 km kolo / 42,195 km běh. Limit konkrétního ročníku ověřit v propozicích. Záměr: dokončení 45–60 min před konečným limitem (30 min = menší rezerva), včetně dep a občerstvení.",
           },
           {
             id: "703",
-            title: "Ironman 70.3",
-            body: "1,9 km plavání + 90 km kolo + 21,1 km běh. Limit 8,5 h. Ideální první závod nebo kvalifikace.",
+            title: "Půlka / ~70.3",
+            body: "Orientačně 1,9 / 90 / 21,1 km — není automaticky pravda u každého závodu. Limit a profil ověřit v propozicích.",
           },
           {
-            id: "mallorca",
-            title: "Ironman 70.3 Mallorca",
-            body: "Mallorca, Španělsko · cíl 24. 7. 2028 · Středozemní moře, Serra de Tramuntana.",
-            link: "https://www.ironman.com/im703-mallorca",
+            id: "moritzburg",
+            title: "Schloss-Triathlon Moritzburg (předběžný favorit 2028)",
+            body: "Komornější, rodinná atmosféra u Drážďan. Výběr zatím není definitivní. Ročník 2026 uváděl 1,9 / 87 / 21,1 km. Datum, profil a limity 2028 ověřit po zveřejnění propozic.",
           },
           {
             id: "thun",
-            title: "Ironman Switzerland — Thun",
-            body: "Thun · cíl 24. 7. 2030 · Thunersee, Alpy (+2200 m), historické centrum.",
+            title: "IRONMAN Switzerland — Thun (2030)",
+            body: "Cíl k 50. narozeninám. Účast závisí na konání a podmínkách ročníku 2030. Historicky cca 180 km, +2200 m, dva okruhy. Pracovní odhad sjezdů není přesné GPX měření. Tempo odvozovat od skutečných výkonů, ne od dřepů.",
             link: "https://www.ironman.com/im-switzerland",
           },
         ].map((block) => (

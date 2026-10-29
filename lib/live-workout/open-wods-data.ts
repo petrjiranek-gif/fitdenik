@@ -51,19 +51,20 @@ const OPEN_WOD_OVERRIDES: Partial<Record<OpenWodKey, LiveWodDefinition>> = {
     scoreType: "AMRAP (7 min)",
     timeCapMin: 7,
     prescription:
-      "Za 7 minut dokonči co nejvíc platných burpees (standard dle pravidel tehdejšího Open — viz WodWell).",
+      "Za 7 minut co nejvíc platných burpee. Standard Open 12.1: dole se země dotýká hrudník i boky; nahoře se obě ruce dotknou cíle 15,24 cm (6 in) nad maximálním dosahem ve stoje. Bez tohoto standardu označ výsledek jako upravenou variantu — neslučovat s Open 12.1 rekordem.",
     description:
-      "Skóre = počet burpees za 7 minut. Není žádný horní „cíl“ rep v aplikaci — počítadlo jen sčítá dokončené opakování. Po 7 minutách zastav časovač a ulož výsledek.",
+      "Skóre = počet platných burpee za 7 minut. Počítadlo sčítá dokončená opakování. Po 7 minutách zastav a ulož. Lineárně nepřepočítávat na Burpee 60 / hodinu.",
     segments: [{ label: "Burpees (AMRAP 7:00)", reps: 9999 }],
     benchmarks: [
-      { level: "Formát", timeRange: "AMRAP 7:00 — max burpees" },
+      { level: "Formát", timeRange: "AMRAP 7:00 — max burpee" },
+      { level: "Standard", timeRange: "hrudník + boky na zemi, cíl 15,24 cm nad dosahem" },
       { level: "Historie", timeRange: "první Open workout (2012)" },
-      { level: "Zdroj", timeRange: "WodWell + games.crossfit.com" },
     ],
     referenceUrl: "https://www.wodwell.com/wod/open-12-1/",
     liveFinishAnytime: true,
+    defaultMovementStandard: "burpee_open_12_1",
     rxLoadDescription:
-      "Burpee dle pravidel Open (náhrudníkem na zem, vstát, skok s dotykem nad cílem)",
+      "Burpee Open 12.1: hrudník i boky na zemi, obě ruce na cíl 15,24 cm nad max. dosahem ve stoje",
   },
   open_26_1: {
     key: "open_26_1",

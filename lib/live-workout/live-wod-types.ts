@@ -1,4 +1,6 @@
-/** Sdílené typy pro benchmark, Open, bodyweight i finisher (bez kruhových importů). */
+import type { MovementStandard } from "@/lib/live-workout/home-prep-standards";
+
+/** Sdílené typy pro benchmark, Open, bodyweight, finisher i domácí přípravu. */
 
 export type WodBenchmarkRow = { level: string; timeRange: string };
 
@@ -38,8 +40,8 @@ export type EmomMinuteBlock = {
 
 export type LiveWodDefinition = {
   key: string;
-  /** Benchmark Girl/Hero, Open, bodyweight benchmark, nebo krátký finisher. */
-  kind: "benchmark" | "open" | "bodyweight" | "finisher";
+  /** Benchmark Girl/Hero, Open, bodyweight, finisher, nebo domácí příprava. */
+  kind: "benchmark" | "open" | "bodyweight" | "finisher" | "home";
   /** Zobrazovaný název */
   name: string;
   subtitle: string;
@@ -71,4 +73,9 @@ export type LiveWodDefinition = {
   helpText?: string;
   /** EMOM — opakující se bloky minut (lichá/sudá nebo 3min cyklus). */
   emomCycle?: EmomMinuteBlock[];
+  /** Štítek u čísel, která nejsou změřený výkon. */
+  claimKind?: "plan" | "vypocet" | "odhad";
+  /** Dlouhodobá ambice — ne předepsaná dávka. */
+  ambition?: boolean;
+  defaultMovementStandard?: MovementStandard;
 };

@@ -6,8 +6,8 @@ export default function TrainingLivePage() {
       <div>
         <h2 className="text-2xl font-bold text-white">Živý trénink</h2>
         <p className="text-zinc-400">
-          Pomůcka pro průběh tréninku: typ sportu, u CrossFit výběr benchmarku (předpis jako na WodWell), časovač a počítadlo
-          opakování. Výsledek se uloží lokálně a lze ho doplnit k hlavnímu záznamu v Trénink / Importy.
+          Pomůcka pro průběh tréninku: CrossFit, HYROX, bodybuilding, bodyweight a domácí příprava (vlastní
+          benchmarky k Ironmanu). Částečný výsledek se neukládá jako dokončený trénink.
         </p>
       </div>
       <LiveTrainingFlow />

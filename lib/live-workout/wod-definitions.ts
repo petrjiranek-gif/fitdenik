@@ -12,6 +12,10 @@ import {
   FINISHER_WODS,
   type FinisherWodKey,
 } from "@/lib/live-workout/finisher-wods-data";
+import {
+  HOME_PREP_WODS,
+  type HomePrepWodKey,
+} from "@/lib/live-workout/home-prep-wods-data";
 import { OPEN_WODS, type OpenWodKey } from "@/lib/live-workout/open-wods-data";
 
 export type {
@@ -37,6 +41,9 @@ export {
 export type { BodyweightWodKey } from "@/lib/live-workout/bodyweight-wods-data";
 export { BODYWEIGHT_WOD_ORDER, BODYWEIGHT_WODS } from "@/lib/live-workout/bodyweight-wods-data";
 
+export type { HomePrepWodKey } from "@/lib/live-workout/home-prep-wods-data";
+export { HOME_PREP_WOD_ORDER, HOME_PREP_WODS } from "@/lib/live-workout/home-prep-wods-data";
+
 export type { FinisherTodayContext, FinisherWodKey } from "@/lib/live-workout/finisher-wods-data";
 export {
   FINISHER_DAY_TYPE_LABELS,
@@ -58,7 +65,7 @@ export type CrossFitGirlKey =
   | "murph"
   | "bear_complex";
 
-export type LiveWodKey = CrossFitGirlKey | OpenWodKey | BodyweightWodKey | FinisherWodKey;
+export type LiveWodKey = CrossFitGirlKey | OpenWodKey | BodyweightWodKey | FinisherWodKey | HomePrepWodKey;
 
 /** @deprecated použij LiveWodDefinition */
 export type CrossFitWodDefinition = LiveWodDefinition;
@@ -214,6 +221,7 @@ export const LIVE_WODS: Record<LiveWodKey, LiveWodDefinition> = {
   ...OPEN_WODS,
   ...BODYWEIGHT_WODS,
   ...FINISHER_WODS,
+  ...HOME_PREP_WODS,
 };
 
 export const CROSSFIT_WOD_ORDER: LiveWodKey[] = [

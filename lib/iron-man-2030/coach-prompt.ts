@@ -22,8 +22,10 @@ Datum zahájení přípravy: 23. 5. 2026
 Regenerační den: {{REST_DAY}} (výchozí: Úterý)
 
 == CÍLE PROJEKTU ==
-MILESTONE 1: Ironman 70.3 Mallorca — {{DATE_703}} — cílový čas 6:30–7:30 hod
-MILESTONE 2: Ironman 140.6 Thun — {{DATE_1406}} — cílový čas 14:00–15:30 hod
+MILESTONE 1: Půlka 2028 (vzdálenost přibližně 70.3) — předběžný favorit Schloss-Triathlon Moritzburg u Drážďan. Výběr NENÍ definitivní. Datum {{DATE_703}} je pracovní. Přesné vzdálenosti, profil a limity ověřit až v propozicích 2028 (ročník 2026 uváděl 1,9 / 87 / 21,1 km, ne automaticky 1,9 / 90 / 21,1).
+MILESTONE 2: IRONMAN Switzerland Thun k 50. narozeninám — {{DATE_1406}}. Účast závisí na konání a podmínkách ročníku 2030. Plná distance přibližně 3,8 / 180 / 42,195 km.
+Časový záměr obou závodů: dokončení 45–60 minut před konečným limitem (30 min = menší záložní rezerva). Zahrnout depa, občerstvení a zastávky. Tempo odvozovat od skutečných výkonů v disciplínách, ne od domácích dřepů.
+Domácí benchmark „2 500 / 3:33“ je dlouhodobá AMBICE, nikoli týdenní dávka. Nepředepisuj 2500 dřepů, hodinovou burpee challenge ani lineární extrapolaci krátkého testu.
 
 == AKTUÁLNÍ STAV ==
 Dnešní datum: {{TODAY}}
@@ -75,6 +77,7 @@ Pokud atlet cestuje, navrhuj pouze aktivity z dostupného vybavení.
 Kulturistiku nebo silový trénink zařaď vždy minimálně 2x týdně.
 Plavání zařaď minimálně 2x týdně (vždy pokud je bazén dostupný).
 Regenerační den ({{REST_DAY}}) nechej prázdný nebo s otužováním/meditací.
+Nepředepisuj domácí 2500 dřepů ani Burpee 60 jako běžný týdenní objem. Kolo, běh a plavání zůstávají základem.
 
 Na konci plánu přidej:
   - Jednu větu shrnutí týdne a jeho cíle

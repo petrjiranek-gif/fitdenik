@@ -6,7 +6,7 @@ export default function BenchmarksPage() {
       <div>
         <h2 className="text-2xl font-bold text-white">Benchmarky</h2>
         <p className="text-zinc-400">
-          Vyber kategorii (Girl nebo ostatní WOD), otevři definici podle WodWell a zapiš svůj výsledek.
+          Girl a ostatní WOD podle WodWell, plus vlastní domácí benchmarky (Karen Legs není oficiální Karen).
         </p>
       </div>
       <BenchmarksFlow />

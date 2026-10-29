@@ -21,7 +21,7 @@ export type SportType =
   | "Skiing";
 
 /** Živý trénink — kategorie (CrossFit má výběr benchmark WOD). */
-export type LiveSportCategory = "crossfit" | "bodybuilding" | "bodyweight" | "hyrox";
+export type LiveSportCategory = "crossfit" | "bodybuilding" | "bodyweight" | "hyrox" | "home";
 
 export interface UserProfile {
   id: string;

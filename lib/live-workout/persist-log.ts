@@ -1,7 +1,21 @@
+import type { MovementStandard } from "@/lib/live-workout/home-prep-standards";
 import type { LiveWodKey } from "@/lib/live-workout/wod-definitions";
 import type { LiveSportCategory } from "@/lib/types";
 
 const STORAGE_KEY = "fitdenik.liveWorkoutLogs.v1";
+
+export type LiveWorkoutCompletion = "complete" | "partial";
+
+export type LiveWorkoutSplit = {
+  label: string;
+  reps: number;
+  elapsedSec: number;
+};
+
+export type LiveHoldSeries = {
+  kind: "plank" | "wall_sit";
+  durationSec: number;
+};
 
 export type LiveWorkoutLogEntry = {
   id: string;
@@ -19,6 +33,14 @@ export type LiveWorkoutLogEntry = {
   loadUsed?: string;
   /** Propojení se záznamem v Trénink (import z Kondice / Apple Fitness). */
   linkedTrainingSessionId?: string;
+  /** Částečný pokus není dokončený trénink ani osobní rekord. */
+  completion?: LiveWorkoutCompletion;
+  movementStandard?: MovementStandard;
+  rpe?: number;
+  pain?: string;
+  recoveryNote?: string;
+  splits?: LiveWorkoutSplit[];
+  holdSeries?: LiveHoldSeries[];
 };
 
 export function readLiveWorkoutLogs(): LiveWorkoutLogEntry[] {

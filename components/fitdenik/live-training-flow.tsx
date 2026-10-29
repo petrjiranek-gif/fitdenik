@@ -7,6 +7,7 @@ import {
   BODYWEIGHT_WOD_ORDER,
   CROSSFIT_WOD_ORDER,
   FINISHER_DAY_TYPE_LABELS,
+  HOME_PREP_WOD_ORDER,
   FINISHER_TODAY_CONTEXT_OPTIONS,
   FINISHER_WOD_ORDER,
   LIVE_WODS,
@@ -26,7 +27,22 @@ import {
 } from "@/lib/live-workout/wod-definitions";
 import { BodybuildingExerciseCombobox } from "@/components/fitdenik/bodybuilding-exercise-combobox";
 import { formInputClass } from "@/components/fitdenik/form-fields";
-import { saveLiveWorkoutLog } from "@/lib/live-workout/persist-log";
+import {
+  saveLiveWorkoutLog,
+  type LiveHoldSeries,
+  type LiveWorkoutCompletion,
+  type LiveWorkoutSplit,
+} from "@/lib/live-workout/persist-log";
+import {
+  BURPEE_STANDARDS,
+  MOVEMENT_STANDARD_LABELS,
+  SQUAT_STANDARDS,
+  defaultStandardForWod,
+  isBurpeeWodKey,
+  symbolicCrankRevs,
+  type MovementStandard,
+} from "@/lib/live-workout/home-prep-standards";
+import { isHomeSessionCompleteEligible } from "@/lib/live-workout/home-prep-records";
 import {
   attachLiveWorkoutToTraining,
   buildFinisherTrainingNoteAppendix,
@@ -66,6 +82,13 @@ import {
   scheduleRestVoiceCues,
 } from "@/lib/live-workout/rest-sounds";
 import type { LiveSportCategory } from "@/lib/types";
+
+function claimKindLabel(kind: "plan" | "vypocet" | "odhad" | undefined): string | null {
+  if (kind === "plan") return "Plán";
+  if (kind === "vypocet") return "Výpočet";
+  if (kind === "odhad") return "Odhad";
+  return null;
+}
 
 function formatElapsed(ms: number): string {
   const s = Math.floor(ms / 1000);
@@ -373,6 +396,16 @@ export function LiveTrainingFlow() {
   const [finisherKcal, setFinisherKcal] = useState("");
   const [finisherNote, setFinisherNote] = useState("");
   const [linkTrainingSessionId, setLinkTrainingSessionId] = useState("");
+  const [homeStandard, setHomeStandard] = useState<MovementStandard>("air_squat_calf_raise");
+  const [homeRpe, setHomeRpe] = useState("");
+  const [homePain, setHomePain] = useState("");
+  const [homeRecovery, setHomeRecovery] = useState("");
+  const [homeHoldKind, setHomeHoldKind] = useState<"plank" | "wall_sit">("plank");
+  const [homeHoldSec, setHomeHoldSec] = useState("");
+  const [homeHoldSeries, setHomeHoldSeries] = useState<LiveHoldSeries[]>([]);
+  const [homeSplits, setHomeSplits] = useState<LiveWorkoutSplit[]>([]);
+  const lastBurpeeSplitIdx = useRef(-1);
+  const [symbolicOpen, setSymbolicOpen] = useState(false);
 
   const repositories = useMemo(() => getRepositories(), []);
   const todaysTrainingSessions = useMemo(
@@ -395,17 +428,25 @@ export function LiveTrainingFlow() {
         : wod?.name);
   const target = wod ? totalTargetReps(wod) : 0;
   const isFinisher = wod?.kind === "finisher";
+  const isHome = sport === "home" || wod?.kind === "home";
   const isFinisherEmom = isFinisher && wod?.formatType === "EMOM";
+  const isHomeEmom = isHome && wod?.formatType === "EMOM" && Boolean(wod.emomCycle?.length);
+  const isEmomLive = isFinisherEmom || isHomeEmom;
   const isFinisherAmrap = isFinisher && wod?.formatType === "AMRAP";
   const finisherDurationMin = wod?.durationMinutes ?? wod?.timeCapMin ?? 0;
   const emomState =
-    isFinisherEmom && finisherDurationMin > 0
+    isEmomLive && finisherDurationMin > 0
       ? getEmomMinuteState(elapsedMs, finisherDurationMin)
       : null;
   const emomCurrentBlock =
-    isFinisherEmom && wod && emomState
+    isEmomLive && wod && emomState
       ? getEmomBlockForMinute(wod, emomState.currentMinute)
       : null;
+  const homeCompleteEligible = Boolean(
+    isHome &&
+      wod &&
+      isHomeSessionCompleteEligible(wod.key, completedReps, Math.floor(elapsedMs / 1000)),
+  );
   const hideRepRemaining =
     wod?.liveFinishAnytime === true &&
     (target >= UNCAPPED_REPS_THRESHOLD || /amrap/i.test(wod.scoreType));
@@ -414,10 +455,33 @@ export function LiveTrainingFlow() {
       ? hyroxDoneSteps > 0
       : sport === "bodybuilding" && bbProgram
         ? completedReps > 0 || bbSetsConfirmed > 0
-        : isFinisherEmom
-          ? elapsedMs > 0 && (emomState?.isComplete === true || finisherCompleted)
-          : wod && (wod.liveFinishAnytime || target === 0 || completedReps >= target),
+        : isHome
+          ? Boolean(wod && (elapsedMs > 0 || completedReps > 0 || homeHoldSeries.length > 0))
+          : isFinisherEmom
+            ? elapsedMs > 0 && (emomState?.isComplete === true || finisherCompleted)
+            : wod && (wod.liveFinishAnytime || target === 0 || completedReps >= target),
   );
+
+  useEffect(() => {
+    if (!wodKey) return;
+    setHomeStandard(wod?.defaultMovementStandard ?? defaultStandardForWod(wodKey));
+    setHomeSplits([]);
+    setHomeHoldSeries([]);
+    lastBurpeeSplitIdx.current = -1;
+    setSymbolicOpen(false);
+  }, [wodKey, wod?.defaultMovementStandard]);
+
+  useEffect(() => {
+    if (wodKey !== "home_burpee_60" || elapsedMs < 600_000) return;
+    const idx = Math.min(5, Math.floor(elapsedMs / 600_000) - 1);
+    if (idx <= lastBurpeeSplitIdx.current) return;
+    lastBurpeeSplitIdx.current = idx;
+    const elapsedSec = (idx + 1) * 600;
+    setHomeSplits((prev) => [
+      ...prev,
+      { label: `${(idx + 1) * 10} min`, reps: completedReps, elapsedSec },
+    ]);
+  }, [elapsedMs, completedReps, wodKey]);
 
   useEffect(() => {
     if (wodKey !== "bw_blackjack") return;
@@ -481,7 +545,7 @@ export function LiveTrainingFlow() {
   }, [emomState?.isComplete]);
 
   useEffect(() => {
-    if (!isFinisherEmom || !running || !emomState) return;
+    if (!isEmomLive || !running || !emomState) return;
 
     const curMinute = emomState.currentMinute;
     if (curMinute !== emomAudioMinuteRef.current) {
@@ -500,7 +564,7 @@ export function LiveTrainingFlow() {
       emomCompleteSoundPlayedRef.current = true;
       void playEmomSessionComplete();
     }
-  }, [isFinisherEmom, running, emomState, emomState?.currentMinute, emomState?.secRemaining, emomState?.isComplete]);
+  }, [isEmomLive, running, emomState, emomState?.currentMinute, emomState?.secRemaining, emomState?.isComplete]);
 
   useEffect(() => {
     setUserLoadInput("");
@@ -575,7 +639,7 @@ export function LiveTrainingFlow() {
     if (startedAtRef.current == null) {
       startedAtRef.current = Date.now();
       setElapsedMs(0);
-      if (isFinisherEmom) {
+      if (isEmomLive) {
         emomAudioMinuteRef.current = 0;
         emomAudioSecRef.current = null;
         emomCompleteSoundPlayedRef.current = false;
@@ -612,6 +676,13 @@ export function LiveTrainingFlow() {
     setFinisherAvgHr("");
     setFinisherKcal("");
     setFinisherNote("");
+    setHomeRpe("");
+    setHomePain("");
+    setHomeRecovery("");
+    setHomeHoldSec("");
+    setHomeHoldSeries([]);
+    setHomeSplits([]);
+    lastBurpeeSplitIdx.current = -1;
     emomAudioMinuteRef.current = 0;
     emomAudioSecRef.current = null;
     emomCompleteSoundPlayedRef.current = false;
@@ -732,9 +803,13 @@ export function LiveTrainingFlow() {
     setHyroxStepLoad("");
   };
 
-  const finishAndSave = useCallback(() => {
+  const finishAndSave = useCallback((completion: LiveWorkoutCompletion = "complete") => {
     if (!wod && !hyroxVariant && !(sport === "bodybuilding" && bbProgram)) return;
     const durationSec = Math.floor(elapsedMs / 1000);
+    const resolvedCompletion: LiveWorkoutCompletion =
+      isHome && completion === "complete" && !isHomeSessionCompleteEligible(wod?.key, completedReps, durationSec)
+        ? "partial"
+        : completion;
     const loadTrim = userLoadInput.trim();
     const bbEquipSummary = bbEquipmentIds
       .map((id) => BODYBUILDING_EQUIPMENT.find((e) => e.id === id)?.label)
@@ -809,6 +884,28 @@ export function LiveTrainingFlow() {
     const linkedSession = linkTrainingSessionId
       ? repositories.training.list().find((s) => s.id === linkTrainingSessionId)
       : undefined;
+    const rpeValue = homeRpe.trim() ? Number(homeRpe) : undefined;
+    const rpeOk = rpeValue != null && Number.isFinite(rpeValue) ? Math.min(10, Math.max(0, rpeValue)) : undefined;
+    const holdSum = (kind: "plank" | "wall_sit") =>
+      homeHoldSeries.filter((h) => h.kind === kind).reduce((sum, h) => sum + h.durationSec, 0);
+    const homeNotes = isHome
+      ? [
+          resolvedCompletion === "partial" ? " Částečný výsledek — není dokončený trénink ani osobní rekord." : "",
+          ` Standard: ${MOVEMENT_STANDARD_LABELS[homeStandard]}.`,
+          rpeOk != null ? ` RPE ${rpeOk}/10.` : "",
+          homePain.trim() ? ` Bolest: ${homePain.trim()}.` : "",
+          homeRecovery.trim() ? ` Zotavení 24–48 h: ${homeRecovery.trim()}.` : "",
+          homeSplits.length
+            ? ` Úseky: ${homeSplits.map((s) => `${s.label} ${s.reps} rep`).join(", ")}.`
+            : "",
+          homeHoldSeries.length
+            ? ` Plank série ${homeHoldSeries.filter((h) => h.kind === "plank").length} / součet ${holdSum("plank")} s; wall sit ${homeHoldSeries.filter((h) => h.kind === "wall_sit").length} / součet ${holdSum("wall_sit")} s.`
+            : "",
+          wod?.key === "home_2500_333"
+            ? " Symbolický model 1 cyklus ≈ 10 otáček klik není fyziologický ekvivalent a není zápis kilometrů."
+            : "",
+        ].join("")
+      : "";
     const entry = saveLiveWorkoutLog({
       sportCategory: sport,
       wodKey: freeWorkoutMode ? undefined : (wodKey ?? undefined),
@@ -828,6 +925,7 @@ export function LiveTrainingFlow() {
           ? `Finisher doplněk — ${sessionLabel}. Čas ${formatElapsed(elapsedMs)}.`
           : `Živý trénink — ${sessionLabel}. Čas ${formatElapsed(elapsedMs)}.`,
         finisherScoreSummary ? ` Skóre: ${finisherScoreSummary}.` : "",
+        homeNotes,
         loadTrim ? ` Použité váhy / škálování: ${loadTrim}.` : "",
         bearSeriesSummary ? ` Série Bear Complex: ${bearSeriesSummary}.` : "",
         freeSetSummary ? ` Série Free Workout: ${freeSetSummary}.` : "",
@@ -841,6 +939,13 @@ export function LiveTrainingFlow() {
       ].join(""),
       loadUsed: loadTrim || bbWeightKg.trim() || undefined,
       linkedTrainingSessionId: linkTrainingSessionId || undefined,
+      completion: isHome ? resolvedCompletion : undefined,
+      movementStandard: isHome ? homeStandard : undefined,
+      rpe: isHome ? rpeOk : undefined,
+      pain: isHome && homePain.trim() ? homePain.trim() : undefined,
+      recoveryNote: isHome && homeRecovery.trim() ? homeRecovery.trim() : undefined,
+      splits: isHome && homeSplits.length ? homeSplits : undefined,
+      holdSeries: isHome && homeHoldSeries.length ? homeHoldSeries : undefined,
     });
     if (linkedSession) {
       const appendix = isFinisher
@@ -859,7 +964,9 @@ export function LiveTrainingFlow() {
     setSaveMessage(
       linkedSession
         ? `Uloženo a propojeno s tréninkem „${linkedSession.title || linkedSession.date}“ (${entry.wodName}, ${formatElapsed(elapsedMs)}).`
-        : `Uloženo lokálně (${entry.wodName}, ${formatElapsed(elapsedMs)}).${isFinisher ? " Vyber dnešní trénink pro propojení, ať nemusíš dělat nový zápis z Kondice." : " Doplň hlavní záznam tréninku v Importech nebo v Trénink."}`,
+        : isHome
+          ? `Uloženo lokálně (${entry.wodName}, ${formatElapsed(elapsedMs)}, ${resolvedCompletion === "partial" ? "částečný výsledek" : "dokončeno"}). Do deníku se to samo jako dokončený trénink nezapisuje.`
+          : `Uloženo lokálně (${entry.wodName}, ${formatElapsed(elapsedMs)}).${isFinisher ? " Vyber dnešní trénink pro propojení, ať nemusíš dělat nový zápis z Kondice." : " Doplň hlavní záznam tréninku v Importech nebo v Trénink."}`,
     );
     resetSession();
     setWodKey(null);
@@ -903,6 +1010,13 @@ export function LiveTrainingFlow() {
     isFinisher,
     isFinisherAmrap,
     isFinisherEmom,
+    isHome,
+    homeStandard,
+    homeRpe,
+    homePain,
+    homeRecovery,
+    homeSplits,
+    homeHoldSeries,
     finisherDurationMin,
     emomState,
     finisherScoreRounds,
@@ -918,7 +1032,7 @@ export function LiveTrainingFlow() {
 
   const openActive = () => {
     if (!wod && !hyroxVariant) return;
-    if (wod?.kind === "finisher" && wod.formatType === "EMOM") {
+    if (wod?.formatType === "EMOM" && wod.emomCycle?.length) {
       emomAudioMinuteRef.current = 0;
       emomAudioSecRef.current = null;
       emomCompleteSoundPlayedRef.current = false;
@@ -994,6 +1108,7 @@ export function LiveTrainingFlow() {
         { id: "hyrox" as const, label: "HYROX", hint: "4 domácí varianty + krokový tracker" },
         { id: "bodybuilding" as const, label: "Bodybuilding", hint: "1×100, 10×10, partie, cviky" },
         { id: "bodyweight" as const, label: "Bodyweight", hint: "Girl / benchmark bez činky" },
+        { id: "home" as const, label: "Domácí příprava", hint: "Okruh, Karen Legs, 2 500 / 3:33" },
       ] as const,
     [],
   );
@@ -1573,6 +1688,87 @@ export function LiveTrainingFlow() {
         </section>
       )}
 
+      {sport === "home" && (
+        <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
+          <h3 className="text-base font-semibold text-zinc-100">2. Domácí příprava — výběr</h3>
+          <p className="mb-3 text-xs text-ew-muted">
+            Vlastní cviky a benchmarky k Ironmanu. Oficiální Karen (wall ball) a WodWell Burpee Hour zůstávají jinde.
+            Plánované výkony se neukládají jako dokončené tréninky.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {HOME_PREP_WOD_ORDER.map((key) => {
+              const def = LIVE_WODS[key];
+              const claim = claimKindLabel(def.claimKind);
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    setWodKey(key);
+                    setActiveOpen(false);
+                  }}
+                  className={`rounded-lg border px-3 py-2 text-left text-sm ${
+                    wodKey === key
+                      ? "border-ew-blue-light bg-ew-bg text-white"
+                      : "border-ew-border text-zinc-300 hover:border-zinc-500"
+                  }`}
+                >
+                  <span className="block font-medium">{def.name}</span>
+                  <span className="block text-[11px] text-zinc-500">
+                    {def.ambition ? "ambice" : def.subtitle}
+                    {claim ? ` · ${claim}` : ""}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          {wod && sport === "home" && (
+            <div className="mt-4 space-y-3">
+              {wod.ambition ? (
+                <p className="rounded-lg border border-amber-500/30 bg-amber-950/20 px-3 py-2 text-xs text-amber-100">
+                  Dlouhodobá ambice / plán — ne předepsaná tréninková dávka.
+                </p>
+              ) : null}
+              {wod.cautionNote ? <p className="text-xs text-zinc-400">{wod.cautionNote}</p> : null}
+              {wod.key === "home_2500_333" ? (
+                <div className="rounded-lg border border-ew-border bg-ew-bg px-3 py-2">
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-ew-blue-light"
+                    onClick={() => setSymbolicOpen((v) => !v)}
+                  >
+                    {symbolicOpen ? "Skrýt" : "Zobrazit"} symbolický model (odhad)
+                  </button>
+                  {symbolicOpen ? (
+                    <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+                      1 dřep s výponem symbolicky zastupuje 10 otáček klik při modelu 180 km / 30 km/h / 70 rpm.
+                      Není to fyziologický ani energetický ekvivalent kola nebo Ironmana. Na burpee se nevztahuje.
+                      Aplikace proto nezobrazuje dřepy jako ujeté kilometry.
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPrescriptionOpen(true)}
+                  className="rounded-md border border-ew-border bg-ew-bg px-3 py-2 text-sm text-ew-blue-light hover:border-ew-blue-light"
+                >
+                  Zobrazit předpis a standard
+                </button>
+                <button
+                  type="button"
+                  onClick={openActive}
+                  className="rounded-md bg-ew-blue px-3 py-2 text-sm text-white hover:bg-ew-blue-dark"
+                >
+                  Spustit čas + počítadlo
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
+      )}
+
       {sport === "bodybuilding" && (
         <section className="rounded-xl border border-ew-border bg-ew-panel p-4">
           <h3 className="text-base font-semibold text-zinc-100">2. Bodybuilding — typ a nastavení</h3>
@@ -1928,11 +2124,19 @@ export function LiveTrainingFlow() {
                 ))}
               </ul>
             </div>
+            {wod.helpText ? <p className="mt-3 text-xs text-zinc-400">{wod.helpText}</p> : null}
+            {wod.cautionNote ? <p className="mt-2 text-xs text-amber-200/80">{wod.cautionNote}</p> : null}
             <p className="mt-4 text-xs text-ew-muted">
-              Oficiální detail a diskuze:{" "}
-              <a href={wod.referenceUrl} target="_blank" rel="noopener noreferrer" className="text-ew-blue-light underline">
-                WodWell — {wod.name}
-              </a>
+              {wod.kind === "home" || wod.referenceUrl.startsWith("/") ? (
+                <>Vlastní předpis FitDeníku — není oficiální WodWell WOD.</>
+              ) : (
+                <>
+                  Oficiální detail a diskuze:{" "}
+                  <a href={wod.referenceUrl} target="_blank" rel="noopener noreferrer" className="text-ew-blue-light underline">
+                    WodWell — {wod.name}
+                  </a>
+                </>
+              )}
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <button
@@ -2000,6 +2204,23 @@ export function LiveTrainingFlow() {
                 idSuffix="live"
               />
             )}
+            {isHome && wod && (
+              <div className="mt-3 rounded-lg border border-sky-500/25 bg-sky-950/15 px-3 py-2 text-xs text-zinc-300">
+                <span className="font-semibold text-sky-200">Domácí příprava</span>
+                {wod.ambition ? <span className="text-amber-200"> · ambice / plán</span> : null}
+                {claimKindLabel(wod.claimKind) ? (
+                  <span className="text-zinc-500"> · {claimKindLabel(wod.claimKind)}</span>
+                ) : null}
+                {target > 0 && target < UNCAPPED_REPS_THRESHOLD ? (
+                  <span className="text-zinc-500">
+                    {" "}
+                    · {completedReps}/{target}
+                  </span>
+                ) : (
+                  <span className="text-zinc-500"> · {completedReps} platných</span>
+                )}
+              </div>
+            )}
             {isFinisher && wod && (
               <div className="mt-3 rounded-lg border border-orange-500/25 bg-orange-950/15 px-3 py-2 text-xs text-zinc-300">
                 <span className="font-semibold text-orange-200">Finisher</span>
@@ -2056,12 +2277,12 @@ export function LiveTrainingFlow() {
                   <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div className="rounded-xl border border-ew-border bg-ew-panel p-4 text-center">
                       <p className="text-xs text-ew-muted">
-                        {isFinisherEmom ? "Celkový čas" : "Čas (od startu)"}
+                        {isEmomLive ? "Celkový čas" : "Čas (od startu)"}
                       </p>
                       <p className="font-mono text-4xl font-bold text-white tabular-nums">
                         {formatElapsed(elapsedMs)}
                       </p>
-                      {isFinisherEmom && finisherDurationMin > 0 && (
+                      {isEmomLive && finisherDurationMin > 0 && (
                         <p className="mt-1 text-sm text-zinc-500">
                           z {finisherDurationMin}:00
                           {emomState?.isComplete ? " · hotovo" : ""}
@@ -2087,7 +2308,7 @@ export function LiveTrainingFlow() {
                       </div>
                     </div>
 
-                    {isFinisherEmom && emomState ? (
+                    {isEmomLive && emomState ? (
                       <div className="rounded-xl border border-orange-500/30 bg-orange-950/20 p-4 text-center">
                         <p className="text-xs text-orange-200/80">
                           Minuta {emomState.currentMinute} / {finisherDurationMin}
@@ -2289,7 +2510,7 @@ export function LiveTrainingFlow() {
                   Vrátit poslední sérii
                 </button>
               </div>
-            ) : !isFinisherEmom ? (
+            ) : !isFinisherEmom || isHome ? (
               <div className="mt-4">
                 <p className="mb-2 text-sm font-medium text-zinc-300">Přičíst opakování</p>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
@@ -2475,6 +2696,108 @@ export function LiveTrainingFlow() {
               </div>
             )}
 
+            {isHome && wod && (
+              <div className="mt-4 space-y-3 rounded-xl border border-sky-500/25 bg-sky-950/10 p-3">
+                <p className="text-sm font-semibold text-zinc-200">Evidence domácí přípravy</p>
+                <p className="text-xs text-zinc-400">
+                  Hotovo {completedReps}
+                  {target > 0 && target < UNCAPPED_REPS_THRESHOLD ? ` / ${target}` : ""} · čas{" "}
+                  {formatElapsed(elapsedMs)}
+                  {wod.key === "home_2500_333"
+                    ? ` · průměr ${elapsedMs > 0 ? (completedReps / (elapsedMs / 60000)).toFixed(2) : "—"} cyklu/min`
+                    : ""}
+                  . Nejsou to ujeté kilometry.
+                </p>
+                <label className="grid gap-1 text-xs text-zinc-400">
+                  Standard provedení
+                  <select
+                    value={homeStandard}
+                    onChange={(e) => setHomeStandard(e.target.value as MovementStandard)}
+                    className={formInputClass}
+                  >
+                    {(isBurpeeWodKey(wod.key) ? BURPEE_STANDARDS : SQUAT_STANDARDS).map((s) => (
+                      <option key={s} value={s}>
+                        {MOVEMENT_STANDARD_LABELS[s]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {wod.key === "home_circuit_6min" || wod.key === "home_circuit_carving" ? (
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto]">
+                    <select
+                      value={homeHoldKind}
+                      onChange={(e) => setHomeHoldKind(e.target.value as "plank" | "wall_sit")}
+                      className={formInputClass}
+                    >
+                      <option value="plank">Plank série</option>
+                      <option value="wall_sit">Wall sit série</option>
+                    </select>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={homeHoldSec}
+                      onChange={(e) => setHomeHoldSec(e.target.value)}
+                      placeholder="sekundy"
+                      className={formInputClass}
+                    />
+                    <button
+                      type="button"
+                      className="rounded-md border border-ew-border px-3 py-2 text-sm text-zinc-200"
+                      onClick={() => {
+                        const sec = Number(homeHoldSec.replace(",", "."));
+                        if (!Number.isFinite(sec) || sec <= 0) return;
+                        setHomeHoldSeries((prev) => [...prev, { kind: homeHoldKind, durationSec: Math.round(sec) }]);
+                        setHomeHoldSec("");
+                      }}
+                    >
+                      Přidat
+                    </button>
+                    {homeHoldSeries.length > 0 ? (
+                      <p className="text-xs text-zinc-400 sm:col-span-3">
+                        Plank: {homeHoldSeries.filter((h) => h.kind === "plank").map((h) => `${h.durationSec}s`).join(" + ") || "—"}
+                        {" · "}
+                        Wall sit: {homeHoldSeries.filter((h) => h.kind === "wall_sit").map((h) => `${h.durationSec}s`).join(" + ") || "—"}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+                {wod.key === "home_burpee_60" && homeSplits.length > 0 ? (
+                  <p className="text-xs text-zinc-400">
+                    10min úseky: {homeSplits.map((s) => `${s.label} ${s.reps}`).join(" · ")}
+                  </p>
+                ) : null}
+                {wod.key === "home_2500_333" && completedReps > 0 ? (
+                  <p className="text-xs text-zinc-500">
+                    Symbolicky {symbolicCrankRevs(completedReps)} otáček klik (odhad, ne kilometry).
+                  </p>
+                ) : null}
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={homeRpe}
+                    onChange={(e) => setHomeRpe(e.target.value)}
+                    placeholder="RPE 0–10"
+                    className={formInputClass}
+                  />
+                  <input
+                    type="text"
+                    value={homePain}
+                    onChange={(e) => setHomePain(e.target.value)}
+                    placeholder="Bolest (volitelné)"
+                    className={formInputClass}
+                  />
+                  <input
+                    type="text"
+                    value={homeRecovery}
+                    onChange={(e) => setHomeRecovery(e.target.value)}
+                    placeholder="Zotavení 24–48 h"
+                    className={`${formInputClass} sm:col-span-1`}
+                  />
+                </div>
+              </div>
+            )}
+
             <div className="mt-6 flex flex-wrap gap-2 border-t border-ew-border pt-4">
               <button
                 type="button"
@@ -2486,19 +2809,42 @@ export function LiveTrainingFlow() {
               >
                 Zrušit session
               </button>
-              <button
-                type="button"
-                disabled={!canFinishSession}
-                onClick={finishAndSave}
-                className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
-              >
-                Dokončit a uložit výsledek
-              </button>
+              {isHome ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={!canFinishSession}
+                    onClick={() => finishAndSave("partial")}
+                    className="rounded-md border border-amber-500/50 px-4 py-2 text-sm font-medium text-amber-100 disabled:opacity-40"
+                  >
+                    Uložit částečný výsledek
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!homeCompleteEligible}
+                    onClick={() => finishAndSave("complete")}
+                    className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+                  >
+                    Dokončit a uložit
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!canFinishSession}
+                  onClick={() => finishAndSave("complete")}
+                  className="rounded-md bg-emerald-700 px-4 py-2 text-sm font-medium text-white disabled:opacity-40"
+                >
+                  Dokončit a uložit výsledek
+                </button>
+              )}
             </div>
             <p className="mt-3 text-xs text-ew-muted">
-              {isFinisher
-                ? "Uloží se finisher jako doplněk. Propojením s dnešním tréninkem uvidíš detail u importu z Kondice — nový zápis dělat nemusíš."
-                : "Uloží se čas, počet opakování a název WOD do lokálního deníku. Hlavní kalorie a délku doplníš importem nebo ručně v Trénink."}
+              {isHome
+                ? "Částečný výsledek není dokončený trénink ani osobní rekord. Do deníku se nic nezapisuje automaticky."
+                : isFinisher
+                  ? "Uloží se finisher jako doplněk. Propojením s dnešním tréninkem uvidíš detail u importu z Kondice — nový zápis dělat nemusíš."
+                  : "Uloží se čas, počet opakování a název WOD do lokálního deníku. Hlavní kalorie a délku doplníš importem nebo ručně v Trénink."}
             </p>
           </div>
         </div>

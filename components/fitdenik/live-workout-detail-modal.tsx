@@ -9,6 +9,7 @@ const SPORT_LABELS: Record<string, string> = {
   hyrox: "HYROX",
   bodybuilding: "Bodybuilding",
   bodyweight: "Bodyweight",
+  home: "Domácí příprava",
 };
 
 export function LiveWorkoutDetailModal({
@@ -44,7 +45,10 @@ export function LiveWorkoutDetailModal({
           </div>
           <div>
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Typ</dt>
-            <dd className="mt-0.5 text-zinc-200">{sportLabel}</dd>
+            <dd className="mt-0.5 text-zinc-200">
+              {sportLabel}
+              {entry.completion === "partial" ? " · částečný výsledek" : entry.completion === "complete" ? " · dokončeno" : ""}
+            </dd>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>

@@ -7,12 +7,22 @@ import {
   filterBenchmarks,
   GIRL_BENCHMARKS,
   OTHER_BENCHMARKS,
+  OWN_BENCHMARKS,
   type BenchmarkCatalogEntry,
   type BenchmarkCatalogKind,
 } from "@/lib/benchmarks/catalog";
 import type { BenchmarkResult, SourceType } from "@/lib/types";
 import { formInputClass } from "@/components/fitdenik/form-fields";
 import { SourceBadge } from "@/components/fitdenik/ui";
+import { formatLiveWorkoutDuration } from "@/lib/live-workout/training-link";
+import { ownPersonalRecords } from "@/lib/live-workout/home-prep-records";
+import { readLiveWorkoutLogs } from "@/lib/live-workout/persist-log";
+import {
+  BURPEE_STANDARDS,
+  MOVEMENT_STANDARD_LABELS,
+  SQUAT_STANDARDS,
+  type MovementStandard,
+} from "@/lib/live-workout/home-prep-standards";
 
 type ModalStep = "closed" | "definition" | "entry";
 
@@ -37,6 +47,8 @@ export function BenchmarksFlow() {
   const [resultValue, setResultValue] = useState("");
   const [scaling, setScaling] = useState("");
   const [notes, setNotes] = useState("");
+  const [ownStandard, setOwnStandard] = useState<MovementStandard>("air_squat_calf_raise");
+  const liveRecords = useMemo(() => ownPersonalRecords(readLiveWorkoutLogs()), [results]);
 
   useEffect(() => {
     if (!useSupabase) return;
@@ -56,7 +68,14 @@ export function BenchmarksFlow() {
   }, [useSupabase]);
 
   const list = useMemo(() => {
-    const base = category === "girl" ? GIRL_BENCHMARKS : category === "other_wod" ? OTHER_BENCHMARKS : [];
+    const base =
+      category === "girl"
+        ? GIRL_BENCHMARKS
+        : category === "other_wod"
+          ? OTHER_BENCHMARKS
+          : category === "own"
+            ? OWN_BENCHMARKS
+            : [];
     return filterBenchmarks(base, query);
   }, [category, query]);
 
@@ -72,6 +91,8 @@ export function BenchmarksFlow() {
     setScaling("");
     setNotes("");
     setResultType(activeEntry.scoreType.toLowerCase().includes("amrap") ? "AMRAP" : "čas");
+    const burpee = /burpee|12\.1/i.test(activeEntry.name);
+    setOwnStandard(burpee ? "burpee_open_12_1" : "air_squat_calf_raise");
     setDate(new Date().toISOString().slice(0, 10));
     setModalStep("entry");
   };
@@ -98,16 +119,19 @@ export function BenchmarksFlow() {
       return;
     }
 
+    const isOwn = activeEntry.kind === "own";
     const input: Omit<BenchmarkResult, "id"> = {
       userId: getFitdenikUserId(),
       date,
       benchmarkName: activeEntry.name,
       resultType,
       resultValue: resultValue.trim(),
-      scaling: scaling.trim(),
+      scaling: isOwn
+        ? [MOVEMENT_STANDARD_LABELS[ownStandard], scaling.trim()].filter(Boolean).join(" · ")
+        : scaling.trim(),
       notes: notes.trim(),
-      sourceType: "wodwell" as SourceType,
-      sourceName: "WODwell",
+      sourceType: (isOwn ? "internal" : "wodwell") as SourceType,
+      sourceName: isOwn ? "FitDeník — vlastní" : "WODwell",
       sourceUrl: activeEntry.referenceUrl,
     };
 
@@ -145,7 +169,7 @@ export function BenchmarksFlow() {
   return (
     <div className="space-y-8">
       {category === null ? (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <button
             type="button"
             onClick={() => {
@@ -176,6 +200,21 @@ export function BenchmarksFlow() {
             </p>
             <span className="mt-4 inline-block text-sm font-medium text-ew-blue group-hover:underline">Vybrat →</span>
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setCategory("own");
+              setQuery("");
+            }}
+            className="group rounded-2xl border border-ew-border bg-gradient-to-br from-ew-panel to-zinc-900/80 p-6 text-left ring-1 ring-ew-border transition hover:border-ew-blue/60 hover:ring-ew-blue/40"
+          >
+            <div className="text-xs font-medium uppercase tracking-wide text-sky-400">FitDeník · vlastní</div>
+            <h3 className="mt-2 text-xl font-bold text-white">Domácí příprava</h3>
+            <p className="mt-2 text-sm text-zinc-400">
+              Karen Legs, Burpee 60, Open 12.1 a 2 500 / 3:33. Oddělené od oficiální Karen (wall ball).
+            </p>
+            <span className="mt-4 inline-block text-sm font-medium text-ew-blue group-hover:underline">Vybrat →</span>
+          </button>
         </div>
       ) : (
         <div className="space-y-4">
@@ -191,7 +230,7 @@ export function BenchmarksFlow() {
               ← Zpět na výběr
             </button>
             <span className="text-sm text-zinc-500">
-              {category === "girl" ? "Benchmark Girl" : "Benchmark WOD"}
+              {category === "girl" ? "Benchmark Girl" : category === "own" ? "Domácí příprava" : "Benchmark WOD"}
             </span>
           </div>
           <label className="block max-w-md">
@@ -259,14 +298,21 @@ export function BenchmarksFlow() {
                     <p className="text-zinc-400">{activeEntry.description}</p>
                   </div>
                 </div>
-                <a
-                  href={activeEntry.referenceUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-4 inline-flex text-sm text-ew-blue hover:underline"
-                >
-                  Otevřít na WodWell →
-                </a>
+                {activeEntry.ambition ? (
+                  <p className="text-xs text-amber-200/90">Dlouhodobá ambice — ne předepsaná dávka.</p>
+                ) : null}
+                {activeEntry.kind === "own" ? (
+                  <p className="mt-4 text-sm text-zinc-500">Vlastní předpis. Oficiální Karen (wall ball) je v Benchmark Girl.</p>
+                ) : (
+                  <a
+                    href={activeEntry.referenceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 inline-flex text-sm text-ew-blue hover:underline"
+                  >
+                    Otevřít na WodWell →
+                  </a>
+                )}
                 <div className="mt-6 flex flex-wrap gap-2">
                   <button
                     type="button"
@@ -319,6 +365,22 @@ export function BenchmarksFlow() {
                     required
                   />
                 </label>
+                {activeEntry.kind === "own" ? (
+                  <label className="grid gap-1 text-sm">
+                    <span className="text-zinc-500">Standard provedení</span>
+                    <select
+                      value={ownStandard}
+                      onChange={(e) => setOwnStandard(e.target.value as MovementStandard)}
+                      className={formInputClass}
+                    >
+                      {(/burpee|12\.1/i.test(activeEntry.name) ? BURPEE_STANDARDS : SQUAT_STANDARDS).map((s) => (
+                        <option key={s} value={s}>
+                          {MOVEMENT_STANDARD_LABELS[s]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
                 <label className="grid gap-1 text-sm">
                   <span className="text-zinc-500">Scaling / váha</span>
                   <input
@@ -362,6 +424,29 @@ export function BenchmarksFlow() {
           </div>
         </div>
       )}
+
+      {liveRecords.length > 0 ? (
+        <div className="rounded-xl border border-sky-500/25 bg-ew-panel p-4">
+          <h3 className="mb-1 font-semibold text-white">Osobní rekordy — domácí příprava</h3>
+          <p className="mb-3 text-xs text-zinc-500">
+            Jen dokončené pokusy ze živého tréninku. Částečné výsledky a různé varianty burpee/dřepů se nemíchají.
+          </p>
+          <div className="space-y-2 text-sm">
+            {liveRecords.map((r) => (
+              <div
+                key={r.id}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-ew-border bg-ew-bg px-3 py-2 text-zinc-200"
+              >
+                <span>
+                  {r.date} — <span className="font-medium text-white">{r.wodName}</span> · {r.reps} rep ·{" "}
+                  {formatLiveWorkoutDuration(r.durationSec)}
+                  <span className="text-zinc-500"> · {r.standardLabel}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="rounded-xl border border-ew-border bg-ew-panel p-4">
         <h3 className="mb-3 font-semibold text-white">Historie benchmarků</h3>

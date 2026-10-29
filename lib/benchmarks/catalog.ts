@@ -3,7 +3,7 @@
  * Rozšíření: doplnit záznamy do GIRL_BENCHMARKS / OTHER_BENCHMARKS.
  */
 
-export type BenchmarkCatalogKind = "girl" | "other_wod";
+export type BenchmarkCatalogKind = "girl" | "other_wod" | "own";
 
 export interface BenchmarkCatalogEntry {
   id: string;
@@ -15,6 +15,8 @@ export interface BenchmarkCatalogEntry {
   rxLoadDescription?: string;
   referenceUrl: string;
   kind: BenchmarkCatalogKind;
+  claimKind?: "plan" | "vypocet" | "odhad";
+  ambition?: boolean;
 }
 
 const WW = "https://www.wodwell.com/wod";
@@ -319,6 +321,71 @@ export const OTHER_BENCHMARKS: BenchmarkCatalogEntry[] = [
     description: "Silově-gymnastický benchmark.",
     rxLoadDescription: "Váhy dle předpisu (vysoké)",
     referenceUrl: `${WW}/king-kong/`,
+  },
+];
+
+/** Vlastní domácí benchmarky — oddělené od oficiální Karen (wall ball). */
+export const OWN_BENCHMARKS: BenchmarkCatalogEntry[] = [
+  {
+    id: "open-12-1-own",
+    kind: "own",
+    name: "Open 12.1",
+    subtitle: "Vlastní evidence · standard Open 2012",
+    scoreType: "AMRAP 7 min",
+    prescription:
+      "Co nejvíc platných burpee za 7 minut. Hrudník i boky na zemi; nahoře obě ruce na cíl 15,24 cm nad maximálním dosahem ve stoje. Jiný standard = upravená varianta, ne Open 12.1 rekord.",
+    description: "Neslučovat s odkročením ani s Burpee 60. Nepřepočítávat lineárně na hodinu.",
+    claimKind: "plan",
+    referenceUrl: "/training/live",
+  },
+  {
+    id: "burpee-60",
+    kind: "own",
+    name: "Burpee 60",
+    subtitle: "Vlastní benchmark · hodinová challenge",
+    scoreType: "AMRAP 60 min",
+    prescription:
+      "Co nejvíc burpee za 60 minut včetně přestávek. Pro porovnávání stejný standard jako Open 12.1. Evidovat úseky po 10 minutách. Cílový počet zatím není stanoven.",
+    description: "Dlouhodobý cíl. Open 12.1 se lineárně nepřepočítává na hodinu.",
+    claimKind: "plan",
+    ambition: true,
+    referenceUrl: "/training/live",
+  },
+  {
+    id: "karen-legs",
+    kind: "own",
+    name: "Karen Legs",
+    subtitle: "Vlastní název · 150 dřepů s výponem",
+    scoreType: "For Time",
+    prescription: "150 cyklů A: dřep → narovnání → výpon → návrat pat. Není oficiální Karen (wall ball).",
+    description: "Referenční tempo 4 s/cyklus je modelové, ne ověřené dlouhodobé tempo.",
+    claimKind: "plan",
+    referenceUrl: "/training/live",
+  },
+  {
+    id: "double-karen-legs",
+    kind: "own",
+    name: "Double Karen Legs",
+    subtitle: "Vlastní název · 300 dřepů s výponem",
+    scoreType: "For Time",
+    prescription: "300 cyklů A, stejný standard jako Karen Legs.",
+    description: "Vyšší objem automaticky nepředepisovat.",
+    claimKind: "plan",
+    referenceUrl: "/training/live",
+  },
+  {
+    id: "2500-333",
+    kind: "own",
+    name: "2 500 / 3:33",
+    subtitle: "Hlavní dlouhodobý benchmark · ambice",
+    scoreType: "For Time · cap 3:33:00",
+    prescription:
+      "2 500 air squatů s výponem, jedna jednotka, limit 3:33 včetně přestávek. Priorita kvalita. Ambice, ne předepsaná dávka.",
+    description:
+      "Výpočet 4 s/cyklus: pohyb 2:46:40, pauzy 46:20. Symbolický původ 2 500 (1 cyklus ≈ 10 otáček klik) není fyziologický ekvivalent a nezobrazuje se jako kilometry.",
+    claimKind: "vypocet",
+    ambition: true,
+    referenceUrl: "/training/live",
   },
 ];
 

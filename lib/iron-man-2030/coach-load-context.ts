@@ -6,6 +6,7 @@ import {
   race703TargetDate,
 } from "@/lib/iron-man-2030/compute";
 import type { CoachPromptContext } from "@/lib/iron-man-2030/coach-prompt";
+import { lastApprovedWeekStart, planWeekMonday } from "@/lib/iron-man-2030/coach-data";
 import { IRON_MAN_PROJECT_START } from "@/lib/iron-man-2030/constants";
 import { mergeIronManState } from "@/lib/iron-man-2030/state-merge";
 import type { IronMan2030State } from "@/lib/iron-man-2030/types";
@@ -156,6 +157,7 @@ export async function loadCoachData(): Promise<CoachLoadedData | null> {
     sessions,
     checkIn: state.coachCheckIn,
     now,
+    weekStart: planWeekMonday(now, lastApprovedWeekStart(state)),
   };
 
   return { state, sessions, bodyEntries, hrvEntries, promptContext };

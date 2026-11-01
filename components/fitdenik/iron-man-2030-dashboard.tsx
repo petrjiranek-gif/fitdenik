@@ -7,6 +7,7 @@ import { CoachCheckInPanel } from "@/components/fitdenik/coach-check-in-panel";
 import { CoachPlanPanel } from "@/components/fitdenik/coach-plan-panel";
 import { IronManRaceInfoSection } from "@/components/fitdenik/iron-man-race-info-section";
 import { formInputClass } from "@/components/fitdenik/form-fields";
+import { lastApprovedWeekStart, planWeekMonday } from "@/lib/iron-man-2030/coach-data";
 import {
   CALENDAR_DAY_META,
   IRON_MAN_AUDIO_TRACKS,
@@ -847,6 +848,7 @@ export function IronMan2030Dashboard() {
         weeklyPlan={state.coachWeeklyPlan}
         useSupabase={useSupabase}
         onStateChange={setState}
+        nextWeekStart={planWeekMonday(new Date(), lastApprovedWeekStart(state))}
       />
 
       {/* Data challenges */}

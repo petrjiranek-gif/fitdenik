@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { isCheckInFresh } from "@/lib/iron-man-2030/coach-check-in";
-import { formatDateCs } from "@/lib/iron-man-2030/coach-data";
+import { addDaysToDateKey, formatDateCs, planWeekMonday } from "@/lib/iron-man-2030/coach-data";
 import { ensurePlanDays } from "@/lib/iron-man-2030/coach-plan-mutate";
 import { PLAN_DAY_LABELS } from "@/lib/iron-man-2030/coach-plan-parse";
 import type {
@@ -134,11 +134,13 @@ export function CoachPlanPanel({
   weeklyPlan,
   useSupabase,
   onStateChange,
+  nextWeekStart,
 }: {
   lastCheckIn: IronManCoachCheckIn | null | undefined;
   weeklyPlan: IronManCoachWeeklyPlan | null | undefined;
   useSupabase: boolean;
   onStateChange: (state: IronMan2030State) => void;
+  nextWeekStart?: string;
 }) {
   const [loading, setLoading] = useState<"generate" | "approve" | null>(null);
   const [dayBusy, setDayBusy] = useState<number | null>(null);
@@ -154,6 +156,9 @@ export function CoachPlanPanel({
   const canApprove = useSupabase && plan && !plan.approvedAt;
   const editable = Boolean(plan && !plan.approvedAt);
   const days = plan ? ensurePlanDays(plan).days ?? [] : [];
+  const generateWeekStart =
+    nextWeekStart ?? planWeekMonday(new Date(), plan?.approvedAt ? plan.weekStart : undefined);
+  const generateWeekEnd = addDaysToDateKey(generateWeekStart, 6);
 
   const runPlanDay = async (body: Record<string, unknown>, busyIndex?: number) => {
     setError(null);
@@ -270,7 +275,11 @@ export function CoachPlanPanel({
           onClick={() => void handleGenerate()}
           className="rounded-md bg-violet-700 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {loading === "generate" ? "Generuji…" : "Vygenerovat plán týdne"}
+          {loading === "generate"
+            ? "Generuji…"
+            : plan?.approvedAt
+              ? "Vygenerovat další týden"
+              : "Vygenerovat plán týdne"}
         </button>
 
         {canApprove && (
@@ -284,6 +293,13 @@ export function CoachPlanPanel({
           </button>
         )}
       </div>
+
+      <p className="mt-2 text-xs text-zinc-500">
+        Nový plán bude na {formatDateCs(generateWeekStart)} – {formatDateCs(generateWeekEnd)}.
+        {plan?.weekStart && plan.weekStart !== generateWeekStart
+          ? ` Zobrazený plán je ještě týden od ${formatDateCs(plan.weekStart)}.`
+          : ""}
+      </p>
 
       {error && <p className="mt-3 text-sm text-red-400">{error}</p>}
 

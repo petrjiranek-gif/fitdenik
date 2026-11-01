@@ -1,12 +1,9 @@
 import { NextResponse } from "next/server";
 import { isCheckInFresh } from "@/lib/iron-man-2030/coach-check-in";
-import { upcomingWeekMonday } from "@/lib/iron-man-2030/coach-data";
+import { lastApprovedWeekStart, planWeekMonday } from "@/lib/iron-man-2030/coach-data";
 import { loadCoachData, saveIronManState } from "@/lib/iron-man-2030/coach-load-context";
 import { CoachApiError, callClaudeCoach } from "@/lib/iron-man-2030/coach-client";
-import {
-  IRON_MAN_COACH_USER_MESSAGE,
-  buildCoachSystemPrompt,
-} from "@/lib/iron-man-2030/coach-prompt";
+import { buildCoachSystemPrompt, buildCoachUserMessage } from "@/lib/iron-man-2030/coach-prompt";
 import { ensurePlanDays } from "@/lib/iron-man-2030/coach-plan-mutate";
 import type { IronManCoachWeeklyPlan } from "@/lib/iron-man-2030/types";
 
@@ -24,7 +21,10 @@ export async function POST(request: Request) {
     }
 
     const { state, promptContext } = loaded;
-    const system = buildCoachSystemPrompt(promptContext);
+    const now = new Date();
+    const weekStart = planWeekMonday(now, lastApprovedWeekStart(state));
+    const promptForWeek = { ...promptContext, now, weekStart };
+    const system = buildCoachSystemPrompt(promptForWeek);
 
     if (previewOnly) {
       return NextResponse.json({
@@ -53,13 +53,13 @@ export async function POST(request: Request) {
 
     const markdown = await callClaudeCoach({
       system,
-      messages: [{ role: "user", content: IRON_MAN_COACH_USER_MESSAGE }],
+      messages: [{ role: "user", content: buildCoachUserMessage(weekStart) }],
     });
 
     const plan = ensurePlanDays({
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
-      weekStart: upcomingWeekMonday(),
+      weekStart,
       markdown,
     });
 

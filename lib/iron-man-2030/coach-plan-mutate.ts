@@ -1,3 +1,4 @@
+import { addDaysToDateKey } from "@/lib/iron-man-2030/coach-data";
 import {
   classifyLineKind,
   formatDayLine,
@@ -12,7 +13,14 @@ import type { IronManCoachWeeklyPlan } from "@/lib/iron-man-2030/types";
 
 export function ensurePlanDays(plan: IronManCoachWeeklyPlan): IronManCoachWeeklyPlan {
   const parsed = parsePlanDays(plan.markdown, plan.weekStart);
-  const days = planDaysLookEmpty(plan.days) ? parsed : (plan.days ?? parsed);
+  if (planDaysLookEmpty(plan.days)) {
+    return { ...plan, days: parsed };
+  }
+  const days = (plan.days ?? parsed).map((d, i) => ({
+    ...d,
+    date: addDaysToDateKey(plan.weekStart, i),
+    dayLabel: parsed[i]?.dayLabel ?? d.dayLabel,
+  }));
   return { ...plan, days };
 }
 

@@ -63,7 +63,7 @@ export async function POST(request: Request) {
       ].join("\n");
 
       const line = await callClaudeCoach({
-        system: buildCoachSystemPrompt(promptContext),
+        system: buildCoachSystemPrompt({ ...promptContext, weekStart: plan.weekStart }),
         messages: [{ role: "user", content: userMessage }],
         maxTokens: 400,
       });

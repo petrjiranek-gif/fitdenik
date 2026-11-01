@@ -1,9 +1,12 @@
 import type { IronManPhase } from "@/lib/iron-man-2030/constants";
 import { formatCheckInForCoach } from "@/lib/iron-man-2030/coach-check-in";
 import {
+  addDaysToDateKey,
+  dateKeyInTimeZone,
   formatDateCs,
   formatLast4WeeksTraining,
   formatWeightTrend30d,
+  planWeekMonday,
   regenerationWeekdayLabel,
 } from "@/lib/iron-man-2030/coach-data";
 import type { IronMan2030Settings, IronManCoachCheckIn } from "@/lib/iron-man-2030/types";
@@ -64,7 +67,8 @@ Meditace: psychologická příprava
 - Slabé místo: technika plavání a aerobní základ — prioritizuj Zónu 2
 
 == TVŮJ ÚKOL ==
-Na základě výše uvedených dat navrhni tréninkový plán na příští týden (Pondělí–Neděle).
+Na základě výše uvedených dat navrhni tréninkový plán na týden Pondělí {{WEEK_START}} až Neděle {{WEEK_END}}.
+Nepoužívej data z dřívějších plánů. Každý den v tomto týdnu.
 
 Pro každý den uveď:
   - Typ aktivity (nebo Volno / Regenerace)
@@ -87,13 +91,18 @@ Na konci plánu přidej:
 Komunikuj jako zkušený trenér: přímě, konkrétně, bez klišé. Nepiš: Dáš to!
 Piš: Tento týden je priorita aerobní základ — Zóna 2 na koloběžce, ne sprint.`;
 
-export const IRON_MAN_COACH_USER_MESSAGE = `Vygeneruj tréninkový plán na příští týden (Pondělí–Neděle) podle systémového zadání.
+export function buildCoachUserMessage(weekStart: string): string {
+  const weekEnd = formatDateCs(addDaysToDateKey(weekStart, 6));
+  const start = formatDateCs(weekStart);
+  return `Vygeneruj tréninkový plán na týden ${start} – ${weekEnd} (Pondělí–Neděle) podle systémového zadání.
 
 Formát výstupu (dodrž přesně):
 - Každý den začni samostatným řádkem: **Pondělí:** (pak **Úterý:** atd.)
 - Na dalších řádcích pod dnem uveď aktivitu, délku a cíl
+- Do řádků dnů nedávej data z minulých týdnů
 - Shrnutí týdne až na konci pod nadpisem **Shrnutí:**
 - Nepoužívej anglické názvy dnů`;
+}
 
 export type CoachPromptContext = {
   settings: IronMan2030Settings;
@@ -107,6 +116,7 @@ export type CoachPromptContext = {
   sessions: TrainingSession[];
   checkIn: IronManCoachCheckIn | null | undefined;
   now?: Date;
+  weekStart?: string;
 };
 
 function formatPhasePeriod(phase: IronManPhase): string {
@@ -122,13 +132,17 @@ export function buildCoachPromptVariables(ctx: CoachPromptContext): Record<strin
   const now = ctx.now ?? new Date();
   const checkIn = formatCheckInForCoach(ctx.checkIn);
   const phase = ctx.phase;
+  const weekStart = ctx.weekStart ?? planWeekMonday(now);
+  const weekEnd = addDaysToDateKey(weekStart, 6);
 
   return {
     CURRENT_WEIGHT: ctx.currentWeightKg.toFixed(1),
     REST_DAY: regenerationWeekdayLabel(ctx.settings.regenerationWeekday),
     DATE_703: formatDateCs(ctx.date703),
     DATE_1406: formatDateCs(ctx.date1406),
-    TODAY: formatDateCs(now.toISOString().slice(0, 10)),
+    TODAY: formatDateCs(dateKeyInTimeZone(now)),
+    WEEK_START: formatDateCs(weekStart),
+    WEEK_END: formatDateCs(weekEnd),
     PHASE_NAME: phase.label,
     PHASE_PERIOD: formatPhasePeriod(phase),
     RECOMMENDED_SESSIONS: `${phase.sessionsPerWeek[0]}–${phase.sessionsPerWeek[1]}`,

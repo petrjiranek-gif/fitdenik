@@ -17,28 +17,66 @@ export function formatDateCs(iso: string): string {
   });
 }
 
+export const APP_TIME_ZONE = "Europe/Prague";
+
+function dateKeyFromLocalDate(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+/** Kalendářní den v Europe/Prague — ne UTC z toISOString. */
+export function dateKeyInTimeZone(now = new Date(), timeZone = APP_TIME_ZONE): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
 export function mondayOfDate(dateKey: string): string {
   const d = new Date(`${dateKey}T12:00:00`);
   const dow = d.getDay();
   const diff = dow === 0 ? -6 : 1 - dow;
   d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
-}
-
-/** Pondělí nadcházejícího týdne (plán vždy na „příští týden“). */
-export function upcomingWeekMonday(now = new Date()): string {
-  const d = new Date(now);
-  d.setHours(12, 0, 0, 0);
-  const dow = d.getDay();
-  const daysUntilNextMonday = dow === 0 ? 1 : 8 - dow;
-  d.setDate(d.getDate() + daysUntilNextMonday);
-  return d.toISOString().slice(0, 10);
+  return dateKeyFromLocalDate(d);
 }
 
 export function addDaysToDateKey(dateKey: string, days: number): string {
   const d = new Date(`${dateKey}T12:00:00`);
   d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+  return dateKeyFromLocalDate(d);
+}
+
+export function lastApprovedWeekStart(state: {
+  coachWeeklyPlan?: { approvedAt?: string; weekStart: string } | null;
+  coachPlanHistory?: { approvedAt?: string; weekStart: string }[] | null;
+}): string | undefined {
+  if (state.coachWeeklyPlan?.approvedAt) return state.coachWeeklyPlan.weekStart;
+  return (state.coachPlanHistory ?? []).find((p) => p.approvedAt)?.weekStart;
+}
+
+/**
+ * Pondělí týdne, na který se má generovat plán.
+ * Aktuální týden (Po–Ne v Praze), v neděli už další týden.
+ * Když je ten týden už schválený, posune se o +7 dní.
+ */
+export function planWeekMonday(now = new Date(), lastApproved?: string): string {
+  const today = dateKeyInTimeZone(now);
+  const thisMonday = mondayOfDate(today);
+  const thisSunday = addDaysToDateKey(thisMonday, 6);
+  let target = today >= thisSunday ? addDaysToDateKey(thisMonday, 7) : thisMonday;
+  if (lastApproved && lastApproved >= target) {
+    target = addDaysToDateKey(lastApproved, 7);
+  }
+  return target;
+}
+
+/** @deprecated použij planWeekMonday — dříve vždy „další pondělí“ bez ohledu na schválený týden. */
+export function upcomingWeekMonday(now = new Date()): string {
+  return planWeekMonday(now);
 }
 
 function disciplineLabel(session: TrainingSession): string {

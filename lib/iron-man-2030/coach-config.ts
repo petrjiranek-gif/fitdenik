@@ -1,9 +1,13 @@
 /** AI Trenér — konfigurace Claude API (pouze server-side). */
 
-/** Model dle specifikace IronMan2030_AI_Trener_Prompt.docx v1.0 */
-export const IRON_MAN_COACH_MODEL = "claude-sonnet-4-20250514";
+/** Claude Sonnet 4 (claude-sonnet-4-20250514) byl 15. 6. 2026 stažen z API. */
+export const IRON_MAN_COACH_MODEL = "claude-sonnet-5-5";
 
-export const IRON_MAN_COACH_MAX_TOKENS = 2000;
+/** Rezerva na týdenní plán. Na Sonnet 5.5 počítá max_tokens i případné thinking. */
+export const IRON_MAN_COACH_MAX_TOKENS = 4096;
+
+/** Structured plán bez agentic smyčky — medium je bližší starému Sonnet 4 než default high. */
+export const IRON_MAN_COACH_EFFORT = "medium";
 
 export const IRON_MAN_COACH_ANTHROPIC_VERSION = "2023-06-01";
 

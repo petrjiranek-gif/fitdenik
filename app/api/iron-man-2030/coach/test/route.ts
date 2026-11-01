@@ -12,7 +12,7 @@ export async function POST() {
       system:
         "Jsi testovací endpoint FitDenik AI Trenéra. Odpověz přesně jedním slovem: OK",
       messages: [{ role: "user", content: "Ping" }],
-      maxTokens: 16,
+      maxTokens: 64,
     });
 
     return NextResponse.json({

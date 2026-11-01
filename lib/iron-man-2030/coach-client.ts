@@ -1,5 +1,6 @@
 import {
   IRON_MAN_COACH_ANTHROPIC_VERSION,
+  IRON_MAN_COACH_EFFORT,
   IRON_MAN_COACH_MAX_TOKENS,
   IRON_MAN_COACH_MODEL,
   getAnthropicApiKey,
@@ -43,6 +44,10 @@ export async function callClaudeCoach(input: {
     body: JSON.stringify({
       model: IRON_MAN_COACH_MODEL,
       max_tokens: input.maxTokens ?? IRON_MAN_COACH_MAX_TOKENS,
+      // Sonnet 5.5 má adaptive thinking defaultně; disabled vrací 400.
+      // between_tools vypne thinking před odpovědí (bez toolů = jen text).
+      thinking: { type: "between_tools" },
+      output_config: { effort: IRON_MAN_COACH_EFFORT },
       system: input.system,
       messages: input.messages.map((m) => ({ role: m.role, content: m.content })),
     }),

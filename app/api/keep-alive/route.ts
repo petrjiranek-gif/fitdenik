@@ -19,15 +19,31 @@ export async function GET() {
     );
   }
 
-  const { error } = await supabase
-    .from("training_sessions")
-    .select("id", { head: true, count: "exact" })
-    .eq("user_id", getFitdenikUserId())
-    .limit(1);
+  const uid = getFitdenikUserId();
 
-  if (error) {
+  // Několik levných SELECT head/count — čisté čtení, žádný zápis.
+  const checks = await Promise.all([
+    supabase
+      .from("training_sessions")
+      .select("id", { head: true, count: "exact" })
+      .eq("user_id", uid)
+      .limit(1),
+    supabase
+      .from("nutrition_entries")
+      .select("id", { head: true, count: "exact" })
+      .eq("user_id", uid)
+      .limit(1),
+    supabase
+      .from("benchmark_results")
+      .select("id", { head: true, count: "exact" })
+      .eq("user_id", uid)
+      .limit(1),
+  ]);
+
+  const failed = checks.find((c) => c.error);
+  if (failed?.error) {
     return NextResponse.json(
-      { ok: false, supabase: "error", message: error.message },
+      { ok: false, supabase: "error", message: failed.error.message },
       { status: 503 },
     );
   }
@@ -35,6 +51,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     supabase: "ok",
+    queries: checks.length,
     ms: Date.now() - started,
   });
 }
